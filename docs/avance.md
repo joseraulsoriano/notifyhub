@@ -18,17 +18,21 @@ Corte: 9 de octubre de 2026. Claves: `NH-n` (planeación) = `SCRUM-(n+8)` (Jira)
 
 ## Sprint 1 · Núcleo y recepción, RF1 (12 – 23 oct), adelantado
 
-| Jira          | Historia                                                                              | Resp. | Estado                                   | Evidencia                                                                                     |
-| ------------- | ------------------------------------------------------------------------------------- | ----- | ---------------------------------------- | --------------------------------------------------------------------------------------------- |
-| SCRUM-18      | Monorepo pnpm + Turborepo, TS estricto, ESLint, Prettier, Conventional Commits, Husky | JRS   | ✅                                       | `package.json`, `turbo.json`, `eslint.config.mjs`, `.husky/`                                  |
-| SCRUM-19      | Entorno local con Docker Compose                                                      | JRS   | ✅                                       | [infra/compose.yaml](../infra/compose.yaml): Postgres, Redis, Mailpit, WireMock, Grafana LGTM |
-| SCRUM-20      | CI en GitHub Actions                                                                  | JRS   | 🟡 Pipeline listo; falta proteger `main` | [.github/workflows/ci.yml](../.github/workflows/ci.yml)                                       |
-| SCRUM-22      | `POST /v1/notifications` con validación                                               | AMM   | 🟡 Implementado; falta revisión de AMM   | `apps/api/src/notifications` · 6 pruebas e2e                                                  |
-| SCRUM-23      | Idempotency-Key y deduplicación (24 h)                                                | JRS   | ✅                                       | `accept-notification.ts` · índice único en BD · 4 pruebas                                     |
-| SCRUM-24      | Persistir y encolar por prioridad en BullMQ                                           | AMM   | 🟡 Implementado; falta revisión de AMM   | `bullmq-notification-queue.ts` · verificado con Redis real                                    |
-| SCRUM-25      | API key y rate limiting                                                               | JRS   | ✅                                       | `api-key.guard.ts`, `rate-limit.guard.ts` · 401 y 429 probados                                |
-| SCRUM-26      | `GET /v1/notifications/{id}`                                                          | AMM   | 🟡 Implementado; falta revisión de AMM   | estado + intentos + historial · 2 pruebas                                                     |
-| SCRUM-21 (S2) | Secretos y configuración por entorno                                                  | JRS   | 🟡 Parcial                               | La configuración se valida con Zod al arrancar; falta el gestor de secretos                   |
+| Jira          | Historia                                                                              | Resp. | Estado                                              | Evidencia                                                                                     |
+| ------------- | ------------------------------------------------------------------------------------- | ----- | --------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| SCRUM-18      | Monorepo pnpm + Turborepo, TS estricto, ESLint, Prettier, Conventional Commits, Husky | JRS   | ✅                                                  | `package.json`, `turbo.json`, `eslint.config.mjs`, `.husky/`                                  |
+| SCRUM-19      | Entorno local con Docker Compose                                                      | JRS   | ✅                                                  | [infra/compose.yaml](../infra/compose.yaml): Postgres, Redis, Mailpit, WireMock, Grafana LGTM |
+| SCRUM-20      | CI en GitHub Actions                                                                  | JRS   | 🟡 Pipeline listo; falta proteger `main`            | [.github/workflows/ci.yml](../.github/workflows/ci.yml)                                       |
+| SCRUM-21      | `POST /v1/notifications` con validación                                               | AMM   | 🟡 Implementado; falta revisión de AMM              | `apps/api/src/notifications` · 6 pruebas e2e                                                  |
+| SCRUM-22      | Idempotency-Key y deduplicación (24 h)                                                | JRS   | ✅                                                  | `accept-notification.ts` · índice único en BD · 4 pruebas                                     |
+| SCRUM-23      | Persistir y encolar por prioridad en BullMQ                                           | AMM   | 🟡 Implementado; falta revisión de AMM              | `bullmq-notification-queue.ts` · verificado con Redis real                                    |
+| SCRUM-24      | API key y rate limiting                                                               | JRS   | ✅                                                  | `api-key.guard.ts`, `rate-limit.guard.ts` · 401 y 429 probados                                |
+| SCRUM-25      | `GET /v1/notifications/{id}`                                                          | AMM   | 🟡 Implementado; falta revisión de AMM              | estado + intentos + historial · 2 pruebas                                                     |
+| SCRUM-26 (S2) | Secretos y configuración por entorno                                                  | JRS   | 🟡 Parcial                                          | La configuración se valida con Zod al arrancar; secretos de producción en `wrangler secret`   |
+| SCRUM-50      | Despliegue en Cloudflare Containers                                                   | JRS   | 🟡 Listo para desplegar; falta Workers Paid y Redis | [despliegue.md](despliegue.md) · [ADR-006](adr/0006-despliegue-cloudflare-containers.md)      |
+
+> Corrección (9 oct): el commit `56a2c7d` y la versión anterior de esta tabla tenían las claves SCRUM-21 a 26 corridas
+> una posición. Las de arriba coinciden con Jira.
 
 ## Verificación
 

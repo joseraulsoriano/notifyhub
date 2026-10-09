@@ -7,3 +7,5 @@ allowBuilds:
   prisma: true
   esbuild: true
   msgpackr-extract: true
+  workerd: true
+  sharp: false

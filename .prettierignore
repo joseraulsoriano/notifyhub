@@ -4,3 +4,5 @@ coverage
 pnpm-lock.yaml
 docs/diagrams/render
 docs/planeacion
+apps/edge/worker-configuration.d.ts
+.wrangler

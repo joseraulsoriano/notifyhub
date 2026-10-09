@@ -8,3 +8,5 @@ packages/persistence/generated
 !.env.example
 .DS_Store
 *.log
+.wrangler
+.dev.vars*

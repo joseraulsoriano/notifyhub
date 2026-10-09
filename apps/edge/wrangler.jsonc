@@ -1,0 +1,37 @@
+// Despliegue de NotifyHub en Cloudflare: un Worker al frente y la API NestJS en Containers.
+// Requiere el plan Workers Paid y Docker corriendo al hacer `wrangler deploy`.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "notifyhub",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-09",
+  "observability": { "enabled": true },
+
+  "containers": [
+    {
+      "class_name": "ApiContainer",
+      // La imagen es la misma que publica el CI; el contexto es la raíz del monorepo.
+      "image": "../../infra/docker/api.Dockerfile",
+      "image_build_context": "../..",
+      // 1/4 vCPU y 1 GiB: NestJS + Prisma no caben con holgura en `lite` (256 MiB).
+      "instance_type": "basic",
+      "max_instances": 3,
+    },
+  ],
+
+  "durable_objects": {
+    "bindings": [{ "name": "API", "class_name": "ApiContainer" }],
+  },
+  "exports": {
+    "ApiContainer": { "type": "durable-object", "storage": "sqlite" },
+  },
+
+  "vars": {
+    "API_INSTANCES": "2",
+    "LOG_LEVEL": "info",
+  },
+  // DATABASE_URL y REDIS_URL se cargan con `wrangler secret put`; nunca en este archivo.
+  "secrets": {
+    "required": ["DATABASE_URL", "REDIS_URL"],
+  },
+}
