@@ -1,0 +1,20 @@
+{
+  "mappings": [
+    {
+      "request": { "method": "POST", "urlPath": "/sendgrid/v3/mail/send" },
+      "response": {
+        "status": 202,
+        "headers": { "X-Message-Id": "{{randomValue length=22 type='ALPHANUMERIC'}}" }
+      }
+    },
+    {
+      "priority": 1,
+      "request": {
+        "method": "POST",
+        "urlPath": "/sendgrid/v3/mail/send",
+        "bodyPatterns": [{ "contains": "timeout@example.com" }]
+      },
+      "response": { "status": 202, "fixedDelayMilliseconds": 15000 }
+    }
+  ]
+}

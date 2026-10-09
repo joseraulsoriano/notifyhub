@@ -1,0 +1,24 @@
+# Catálogo de proveedores y cadenas de fallback (lo consumen la factoría NH-20 y la estrategia NH-26).
+# Agregar un proveedor = agregar una entrada aquí + su Creator en packages/providers.
+providers:
+  sendgrid: { channel: EMAIL, costPerMessage: 0.0008, reliability: 95 }
+  twilio: { channel: SMS, costPerMessage: 0.0079, reliability: 97 }
+  fcm: { channel: PUSH, costPerMessage: 0, reliability: 92 }
+  webhook: { channel: WEBHOOK, costPerMessage: 0, reliability: 90 }
+
+# Estrategia por prioridad: alta favorece confiabilidad, baja favorece costo.
+strategy:
+  HIGH: availability
+  MEDIUM: priority
+  LOW: cost
+
+# Si el canal preferente falla se intenta el siguiente de la cadena.
+fallback:
+  EMAIL: [SMS, PUSH]
+  SMS: [PUSH, EMAIL]
+  PUSH: [SMS, EMAIL]
+  WEBHOOK: [EMAIL]
+
+retry:
+  maxAttempts: 3
+  backoff: { type: exponential, baseMs: 500, maxMs: 10000, jitter: true }
