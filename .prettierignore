@@ -1,0 +1,6 @@
+dist
+**/generated
+coverage
+pnpm-lock.yaml
+docs/diagrams/render
+docs/planeacion

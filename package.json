@@ -1,0 +1,42 @@
+{
+  "name": "notifyhub",
+  "private": true,
+  "description": "Servicio de Notificaciones y Registro Multicanal (Patrones GoF: Factory Method, Strategy y Observer)",
+  "packageManager": "pnpm@11.1.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --filter=@notifyhub/api",
+    "test": "turbo run test",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "turbo run typecheck",
+    "db:generate": "pnpm --filter @notifyhub/persistence db:generate",
+    "db:migrate": "pnpm --filter @notifyhub/persistence db:migrate",
+    "db:seed": "pnpm --filter @notifyhub/persistence db:seed",
+    "infra:up": "docker compose -f infra/compose.yaml up -d",
+    "infra:down": "docker compose -f infra/compose.yaml down",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.8.0",
+    "@commitlint/config-conventional": "^19.8.0",
+    "@eslint/js": "^9.25.0",
+    "@types/node": "^22.15.0",
+    "eslint": "^9.25.0",
+    "eslint-config-prettier": "^10.1.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.0",
+    "prettier": "^3.5.0",
+    "turbo": "^2.5.0",
+    "typescript": "~5.8.3",
+    "typescript-eslint": "^8.31.0",
+    "vitest": "^3.1.0"
+  },
+  "lint-staged": {
+    "*.{ts,js,mjs,json,md,yaml,yml}": "prettier --write"
+  }
+}
