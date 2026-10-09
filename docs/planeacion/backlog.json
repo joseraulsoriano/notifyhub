@@ -1,0 +1,81 @@
+{
+  "project": {
+    "key": "NH",
+    "name": "NotifyHub — Servicio de Notificaciones y Registro Multicanal",
+    "tagline": "Patrones GoF: Factory Method, Strategy y Observer",
+    "start": "2026-09-28",
+    "advanceDelivery": "2026-10-09",
+    "finalDelivery": "2026-12-04"
+  },
+  "people": {
+    "JRS": { "name": "José Raúl Soriano", "role": "Encargado del proyecto · Líder técnico", "focus": "Coordinación, arquitectura de plataforma, API, infraestructura, CI/CD, resiliencia y entregas" },
+    "AMM": { "name": "Andreea Margarita Maldonado Morales", "role": "Especialista del proyecto", "focus": "Diseño de dominio y patrones GoF, integración de proveedores, selección de canal, auditoría y calidad" }
+  },
+  "sprints": [
+    { "id": "S0", "name": "Sprint 0 · Planeación y diseño", "start": "2026-09-28", "end": "2026-10-09", "goal": "Estructura, modelos, diagramas, stack y backlog aprobados (entrega de avance)." },
+    { "id": "S1", "name": "Sprint 1 · Núcleo y recepción (RF1)", "start": "2026-10-12", "end": "2026-10-23", "goal": "Repositorio, entorno local, CI y API que recibe, valida, persiste y encola solicitudes." },
+    { "id": "S2", "name": "Sprint 2 · Factorías y proveedores (RF2)", "start": "2026-10-26", "end": "2026-11-06", "goal": "Despacho real a SendGrid, Twilio, FCM y Webhook mediante factorías configurables." },
+    { "id": "S3", "name": "Sprint 3 · Fallback y auditoría (RF3, RF4)", "start": "2026-11-09", "end": "2026-11-20", "goal": "Selección dinámica por costo/prioridad, conmutación a canal secundario y bitácora completa." },
+    { "id": "S4", "name": "Sprint 4 · Eventos, observabilidad y entrega (RF5)", "start": "2026-11-23", "end": "2026-12-04", "goal": "Eventos de estado a suscriptores, dashboards, pruebas de carga y entrega final." }
+  ],
+  "epics": [
+    { "id": "EP-1", "name": "Planeación y arquitectura", "color": "#6366f1" },
+    { "id": "EP-2", "name": "Plataforma y DevOps", "color": "#64748b" },
+    { "id": "EP-3", "name": "RF1 · Recepción de solicitudes", "color": "#0ea5e9" },
+    { "id": "EP-4", "name": "RF2 · Enrutamiento con factorías", "color": "#10b981" },
+    { "id": "EP-5", "name": "RF3 · Selección dinámica y fallback", "color": "#f59e0b" },
+    { "id": "EP-6", "name": "RF4 · Bitácora de auditoría", "color": "#ef4444" },
+    { "id": "EP-7", "name": "RF5 · Eventos a suscriptores", "color": "#a855f7" },
+    { "id": "EP-8", "name": "Calidad y entrega", "color": "#14b8a6" }
+  ],
+  "issues": [
+    { "key": "NH-1", "epic": "EP-1", "sprint": "S0", "assignee": "JRS", "sp": 3, "status": "Hecho", "priority": "Alta", "summary": "Definir alcance, requisitos funcionales y no funcionales", "criteria": "RF1–RF5 y RNF documentados con criterios de aceptación medibles." },
+    { "key": "NH-2", "epic": "EP-1", "sprint": "S0", "assignee": "JRS", "sp": 3, "status": "Hecho", "priority": "Alta", "summary": "Seleccionar stack tecnológico y registrar ADRs", "criteria": "Stack justificado; ADR-001 a ADR-005 escritos (lenguaje, colas, BD, eventos, observabilidad)." },
+    { "key": "NH-3", "epic": "EP-1", "sprint": "S0", "assignee": "AMM", "sp": 5, "status": "Hecho", "priority": "Alta", "summary": "Modelo de dominio y diagrama de clases con patrones GoF", "criteria": "Factory Method, Strategy y Observer ubicados en el diagrama con responsabilidades claras." },
+    { "key": "NH-4", "epic": "EP-1", "sprint": "S0", "assignee": "AMM", "sp": 3, "status": "Hecho", "priority": "Alta", "summary": "Modelo entidad-relación de persistencia y bitácora", "criteria": "Tablas, llaves, índices y política de particionado de la bitácora definidos." },
+    { "key": "NH-5", "epic": "EP-1", "sprint": "S0", "assignee": "JRS", "sp": 3, "status": "Hecho", "priority": "Media", "summary": "Diagramas C4 (contexto, contenedores) y de despliegue", "criteria": "Diagramas versionados en docs/diagrams en formato Mermaid." },
+    { "key": "NH-6", "epic": "EP-1", "sprint": "S0", "assignee": "AMM", "sp": 3, "status": "Hecho", "priority": "Media", "summary": "Diagramas de secuencia (envío y fallback) y de estados", "criteria": "Flujo feliz, reintento, fallback y emisión de eventos cubiertos." },
+    { "key": "NH-7", "epic": "EP-1", "sprint": "S0", "assignee": "JRS", "sp": 3, "status": "En progreso", "priority": "Alta", "summary": "Contrato de API OpenAPI 3.1 (borrador)", "criteria": "Endpoints, esquemas, códigos de error e idempotencia especificados." },
+    { "key": "NH-8", "epic": "EP-1", "sprint": "S0", "assignee": "JRS", "sp": 2, "status": "Hecho", "priority": "Media", "summary": "Cronograma, backlog priorizado y tablero de seguimiento", "criteria": "Backlog estimado en story points y asignado por sprint." },
+    { "key": "NH-9", "epic": "EP-1", "sprint": "S0", "assignee": "AMM", "sp": 2, "status": "En progreso", "priority": "Media", "summary": "Matriz de riesgos y estrategia de pruebas", "criteria": "Riesgos con probabilidad, impacto y mitigación; pirámide de pruebas definida." },
+
+    { "key": "NH-10", "epic": "EP-2", "sprint": "S1", "assignee": "JRS", "sp": 3, "status": "Por hacer", "priority": "Alta", "summary": "Monorepo pnpm + Turborepo con NestJS y TypeScript estricto", "criteria": "Estructura de carpetas acordada, ESLint, Prettier, Conventional Commits y Husky." },
+    { "key": "NH-11", "epic": "EP-2", "sprint": "S1", "assignee": "JRS", "sp": 3, "status": "Por hacer", "priority": "Alta", "summary": "Entorno local con Docker Compose", "criteria": "Postgres, Redis, Mailpit, WireMock (mocks de proveedores) y Grafana LGTM levantan con un comando." },
+    { "key": "NH-12", "epic": "EP-2", "sprint": "S1", "assignee": "JRS", "sp": 3, "status": "Por hacer", "priority": "Alta", "summary": "Pipeline CI en GitHub Actions", "criteria": "Lint, pruebas, build e imagen Docker en cada pull request; rama main protegida." },
+    { "key": "NH-13", "epic": "EP-2", "sprint": "S2", "assignee": "JRS", "sp": 2, "status": "Por hacer", "priority": "Media", "summary": "Gestión de secretos y configuración por entorno", "criteria": "Credenciales de proveedores fuera del repo; configuración validada al arrancar." },
+
+    { "key": "NH-14", "epic": "EP-3", "sprint": "S1", "assignee": "AMM", "sp": 5, "status": "Por hacer", "priority": "Alta", "summary": "POST /v1/notifications con validación de la solicitud", "criteria": "Acepta remitente, destinatario, mensaje, prioridad (alta/media/baja) y canal preferente; responde 202 con id." },
+    { "key": "NH-15", "epic": "EP-3", "sprint": "S1", "assignee": "JRS", "sp": 3, "status": "Por hacer", "priority": "Alta", "summary": "Idempotency-Key y deduplicación de solicitudes", "criteria": "Reintentos del cliente con la misma llave no generan envíos duplicados (24 h)." },
+    { "key": "NH-16", "epic": "EP-3", "sprint": "S1", "assignee": "AMM", "sp": 5, "status": "Por hacer", "priority": "Alta", "summary": "Persistir solicitud y encolar por prioridad en BullMQ", "criteria": "Tres colas (alta, media, baja); alta se procesa primero; estado inicial registrado." },
+    { "key": "NH-17", "epic": "EP-3", "sprint": "S1", "assignee": "JRS", "sp": 3, "status": "Por hacer", "priority": "Media", "summary": "Autenticación por API key y rate limiting por cliente", "criteria": "401 sin llave válida; 429 al exceder el límite configurado." },
+    { "key": "NH-18", "epic": "EP-3", "sprint": "S1", "assignee": "AMM", "sp": 2, "status": "Por hacer", "priority": "Media", "summary": "Consulta de estado: GET /v1/notifications/{id}", "criteria": "Devuelve estado actual e historial de intentos." },
+
+    { "key": "NH-19", "epic": "EP-4", "sprint": "S2", "assignee": "AMM", "sp": 3, "status": "Por hacer", "priority": "Alta", "summary": "Interfaz NotificationSender y clase base (Template Method)", "criteria": "Flujo validar → enviar → mapear respuesta común a todos los proveedores." },
+    { "key": "NH-20", "epic": "EP-4", "sprint": "S2", "assignee": "AMM", "sp": 5, "status": "Por hacer", "priority": "Alta", "summary": "Factory Method: SenderCreator y registro configurable", "criteria": "Alta de un proveedor nuevo sin tocar el despachador; proveedores declarados en routing.yaml." },
+    { "key": "NH-21", "epic": "EP-4", "sprint": "S2", "assignee": "AMM", "sp": 3, "status": "Por hacer", "priority": "Alta", "summary": "Adaptador SendGrid (correo electrónico)", "criteria": "Envío en sandbox; errores 4xx/5xx clasificados como permanentes o transitorios." },
+    { "key": "NH-22", "epic": "EP-4", "sprint": "S2", "assignee": "JRS", "sp": 3, "status": "Por hacer", "priority": "Alta", "summary": "Adaptador Twilio (SMS)", "criteria": "Envío a número verificado; SID del mensaje guardado como referencia." },
+    { "key": "NH-23", "epic": "EP-4", "sprint": "S2", "assignee": "AMM", "sp": 3, "status": "Por hacer", "priority": "Alta", "summary": "Adaptador Firebase Cloud Messaging (push)", "criteria": "Envío a token de dispositivo de prueba; tokens inválidos marcados como error permanente." },
+    { "key": "NH-24", "epic": "EP-4", "sprint": "S2", "assignee": "JRS", "sp": 3, "status": "Por hacer", "priority": "Media", "summary": "Adaptador Webhook genérico con firma HMAC", "criteria": "POST firmado (X-Signature) con timeout configurable." },
+    { "key": "NH-25", "epic": "EP-4", "sprint": "S2", "assignee": "JRS", "sp": 5, "status": "Por hacer", "priority": "Alta", "summary": "Worker despachador que consume colas y usa la factoría", "criteria": "Concurrencia configurable por cola; apagado ordenado sin perder trabajos." },
+
+    { "key": "NH-26", "epic": "EP-5", "sprint": "S3", "assignee": "AMM", "sp": 5, "status": "Por hacer", "priority": "Alta", "summary": "Strategy: selección de proveedor por costo, prioridad o disponibilidad", "criteria": "Estrategia intercambiable en configuración; alta prioridad favorece confiabilidad sobre costo." },
+    { "key": "NH-27", "epic": "EP-5", "sprint": "S3", "assignee": "JRS", "sp": 5, "status": "Por hacer", "priority": "Alta", "summary": "Política de fallback a canal secundario", "criteria": "Si el proveedor principal falla, se conmuta al siguiente canal/proveedor de la cadena." },
+    { "key": "NH-28", "epic": "EP-5", "sprint": "S3", "assignee": "JRS", "sp": 5, "status": "Por hacer", "priority": "Alta", "summary": "Reintentos con backoff exponencial y circuit breaker por proveedor", "criteria": "Errores transitorios se reintentan; circuito abierto salta directo al fallback." },
+    { "key": "NH-29", "epic": "EP-5", "sprint": "S3", "assignee": "JRS", "sp": 3, "status": "Por hacer", "priority": "Media", "summary": "Health checks de proveedores", "criteria": "Proveedores degradados bajan de rango en la estrategia de disponibilidad." },
+
+    { "key": "NH-30", "epic": "EP-6", "sprint": "S3", "assignee": "AMM", "sp": 3, "status": "Por hacer", "priority": "Alta", "summary": "Tablas delivery_attempt y audit_log append-only", "criteria": "Sin UPDATE/DELETE sobre audit_log; particionado mensual." },
+    { "key": "NH-31", "epic": "EP-6", "sprint": "S3", "assignee": "AMM", "sp": 3, "status": "Por hacer", "priority": "Alta", "summary": "Registrar cada intento: fecha, canal, estado y respuesta del proveedor", "criteria": "Estados enviado, fallido y reintentando con respuesta cruda sanitizada." },
+    { "key": "NH-32", "epic": "EP-6", "sprint": "S3", "assignee": "JRS", "sp": 2, "status": "Por hacer", "priority": "Media", "summary": "Enmascarado de datos personales y política de retención", "criteria": "Correos y teléfonos enmascarados en bitácora; retención de 12 meses." },
+    { "key": "NH-33", "epic": "EP-6", "sprint": "S4", "assignee": "JRS", "sp": 3, "status": "Por hacer", "priority": "Media", "summary": "Consulta de bitácora con filtros y paginación", "criteria": "Filtros por fecha, canal, estado y proveedor; paginación por cursor." },
+
+    { "key": "NH-34", "epic": "EP-7", "sprint": "S4", "assignee": "AMM", "sp": 5, "status": "Por hacer", "priority": "Alta", "summary": "Observer: publicador de eventos y suscriptores internos", "criteria": "Cada cambio de estado notifica a auditoría, métricas y outbox sin acoplarlos al despachador." },
+    { "key": "NH-35", "epic": "EP-7", "sprint": "S4", "assignee": "JRS", "sp": 5, "status": "Por hacer", "priority": "Alta", "summary": "Outbox transaccional y publicación a Redis Streams", "criteria": "Ningún evento se pierde si cae el proceso entre guardar y publicar." },
+    { "key": "NH-36", "epic": "EP-7", "sprint": "S4", "assignee": "AMM", "sp": 3, "status": "Por hacer", "priority": "Media", "summary": "Suscripciones externas por webhook", "criteria": "Alta de suscriptor por tipo de evento; entregas firmadas y con reintento." },
+    { "key": "NH-37", "epic": "EP-7", "sprint": "S4", "assignee": "JRS", "sp": 3, "status": "Por hacer", "priority": "Media", "summary": "Dashboard Grafana de monitoreo y analítica", "criteria": "Tasa de éxito por canal, latencia p95, fallbacks y costo estimado." },
+
+    { "key": "NH-38", "epic": "EP-8", "sprint": "S4", "assignee": "AMM", "sp": 5, "status": "Por hacer", "priority": "Alta", "summary": "Pruebas unitarias de dominio y patrones", "criteria": "Cobertura ≥ 80 % en domain, routing y providers." },
+    { "key": "NH-39", "epic": "EP-8", "sprint": "S3", "assignee": "AMM", "sp": 5, "status": "Por hacer", "priority": "Alta", "summary": "Pruebas de integración con Testcontainers y proveedores simulados", "criteria": "Escenarios de éxito, reintento y fallback automatizados en CI." },
+    { "key": "NH-40", "epic": "EP-8", "sprint": "S4", "assignee": "JRS", "sp": 3, "status": "Por hacer", "priority": "Media", "summary": "Prueba de carga con k6 y prueba de caída de proveedor", "criteria": "1,000 notificaciones/min con p95 de aceptación < 200 ms; fallback verificado." },
+    { "key": "NH-41", "epic": "EP-8", "sprint": "S4", "assignee": "JRS", "sp": 3, "status": "Por hacer", "priority": "Alta", "summary": "Documentación final, demo y presentación", "criteria": "README, guía de despliegue, video demo y presentación de cierre." }
+  ]
+}

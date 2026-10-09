@@ -1,0 +1,97 @@
+erDiagram
+  CLIENT_APP ||--o{ NOTIFICATION : envia
+  NOTIFICATION ||--o{ DELIVERY_ATTEMPT : tiene
+  PROVIDER ||--o{ DELIVERY_ATTEMPT : procesa
+  NOTIFICATION ||--o{ AUDIT_LOG : registra
+  DELIVERY_ATTEMPT |o--o{ AUDIT_LOG : origina
+  NOTIFICATION ||--o{ OUTBOX_EVENT : emite
+  SUBSCRIPTION ||--o{ SUBSCRIPTION_DELIVERY : recibe
+  OUTBOX_EVENT ||--o{ SUBSCRIPTION_DELIVERY : entrega
+  PROVIDER ||--o{ ROUTING_RULE : participa
+  CLIENT_APP {
+    uuid id PK
+    string name
+    string api_key_hash
+    int rate_limit_per_min
+    bool active
+  }
+  NOTIFICATION {
+    uuid id PK
+    uuid client_app_id FK
+    string idempotency_key UK
+    jsonb sender
+    jsonb recipient
+    jsonb message
+    string priority "HIGH MEDIUM LOW"
+    string preferred_channel "EMAIL SMS PUSH WEBHOOK"
+    string status
+    timestamptz created_at
+    timestamptz updated_at
+  }
+  DELIVERY_ATTEMPT {
+    uuid id PK
+    uuid notification_id FK
+    uuid provider_id FK
+    string channel
+    int attempt_number
+    bool is_fallback
+    string status "SENT FAILED RETRYING"
+    string provider_message_id
+    jsonb provider_response
+    string error_code
+    int latency_ms
+    timestamptz attempted_at
+  }
+  PROVIDER {
+    uuid id PK
+    string code "sendgrid twilio fcm webhook"
+    string channel
+    numeric cost_per_message
+    int reliability_score
+    string health "UP DEGRADED DOWN"
+    bool enabled
+  }
+  ROUTING_RULE {
+    uuid id PK
+    string priority
+    string channel
+    uuid provider_id FK
+    int rank
+    string fallback_channel
+  }
+  AUDIT_LOG {
+    bigint id PK
+    uuid notification_id FK
+    uuid attempt_id FK
+    string event_type
+    string from_status
+    string to_status
+    string channel
+    string provider_code
+    jsonb detail
+    timestamptz occurred_at
+  }
+  OUTBOX_EVENT {
+    uuid id PK
+    uuid notification_id FK
+    string event_type
+    jsonb payload
+    timestamptz created_at
+    timestamptz published_at
+  }
+  SUBSCRIPTION {
+    uuid id PK
+    string subscriber_name
+    string target_url
+    string event_types
+    string secret_hash
+    bool active
+  }
+  SUBSCRIPTION_DELIVERY {
+    uuid id PK
+    uuid subscription_id FK
+    uuid outbox_event_id FK
+    string status
+    int attempts
+    timestamptz last_attempt_at
+  }

@@ -1,0 +1,15 @@
+stateDiagram-v2
+  [*] --> RECEIVED: solicitud válida
+  RECEIVED --> QUEUED: encolada por prioridad
+  QUEUED --> SENDING: worker toma el trabajo
+  SENDING --> SENT: proveedor acepta
+  SENDING --> RETRYING: error transitorio
+  RETRYING --> SENDING: tras backoff
+  RETRYING --> FALLBACK: reintentos agotados
+  SENDING --> FALLBACK: error permanente o circuito abierto
+  FALLBACK --> SENDING: siguiente canal o proveedor
+  FALLBACK --> FAILED: sin alternativas
+  SENT --> DELIVERED: confirmación del proveedor
+  SENT --> [*]
+  DELIVERED --> [*]
+  FAILED --> [*]

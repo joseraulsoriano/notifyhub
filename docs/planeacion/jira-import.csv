@@ -1,0 +1,132 @@
+﻿"Issue Id","Parent Id","Issue Type","Summary","Epic Name","Description","Assignee","Priority","Story Points","Sprint","Labels","Status","Due Date"
+"1001","","Epic","Planeación y arquitectura","Planeación y arquitectura","Épica EP-1 del proyecto NotifyHub.","","High","","","notifyhub","To Do",""
+"1002","","Epic","Plataforma y DevOps","Plataforma y DevOps","Épica EP-2 del proyecto NotifyHub.","","High","","","notifyhub","To Do",""
+"1003","","Epic","RF1 · Recepción de solicitudes","RF1 · Recepción de solicitudes","Épica EP-3 del proyecto NotifyHub.","","High","","","notifyhub","To Do",""
+"1004","","Epic","RF2 · Enrutamiento con factorías","RF2 · Enrutamiento con factorías","Épica EP-4 del proyecto NotifyHub.","","High","","","notifyhub","To Do",""
+"1005","","Epic","RF3 · Selección dinámica y fallback","RF3 · Selección dinámica y fallback","Épica EP-5 del proyecto NotifyHub.","","High","","","notifyhub","To Do",""
+"1006","","Epic","RF4 · Bitácora de auditoría","RF4 · Bitácora de auditoría","Épica EP-6 del proyecto NotifyHub.","","High","","","notifyhub","To Do",""
+"1007","","Epic","RF5 · Eventos a suscriptores","RF5 · Eventos a suscriptores","Épica EP-7 del proyecto NotifyHub.","","High","","","notifyhub","To Do",""
+"1008","","Epic","Calidad y entrega","Calidad y entrega","Épica EP-8 del proyecto NotifyHub.","","High","","","notifyhub","To Do",""
+"1","1001","Story","Definir alcance, requisitos funcionales y no funcionales","","Criterios de aceptación: RF1–RF5 y RNF documentados con criterios de aceptación medibles.
+
+Clave de planeación: NH-1","José Raúl Soriano","High","3","Sprint 0 · Planeación y diseño","notifyhub S0","Done","2026-10-09"
+"2","1001","Story","Seleccionar stack tecnológico y registrar ADRs","","Criterios de aceptación: Stack justificado; ADR-001 a ADR-005 escritos (lenguaje, colas, BD, eventos, observabilidad).
+
+Clave de planeación: NH-2","José Raúl Soriano","High","3","Sprint 0 · Planeación y diseño","notifyhub S0","Done","2026-10-09"
+"3","1001","Story","Modelo de dominio y diagrama de clases con patrones GoF","","Criterios de aceptación: Factory Method, Strategy y Observer ubicados en el diagrama con responsabilidades claras.
+
+Clave de planeación: NH-3","Andreea Margarita Maldonado Morales","High","5","Sprint 0 · Planeación y diseño","notifyhub S0","Done","2026-10-09"
+"4","1001","Story","Modelo entidad-relación de persistencia y bitácora","","Criterios de aceptación: Tablas, llaves, índices y política de particionado de la bitácora definidos.
+
+Clave de planeación: NH-4","Andreea Margarita Maldonado Morales","High","3","Sprint 0 · Planeación y diseño","notifyhub S0","Done","2026-10-09"
+"5","1001","Story","Diagramas C4 (contexto, contenedores) y de despliegue","","Criterios de aceptación: Diagramas versionados en docs/diagrams en formato Mermaid.
+
+Clave de planeación: NH-5","José Raúl Soriano","Medium","3","Sprint 0 · Planeación y diseño","notifyhub S0","Done","2026-10-09"
+"6","1001","Story","Diagramas de secuencia (envío y fallback) y de estados","","Criterios de aceptación: Flujo feliz, reintento, fallback y emisión de eventos cubiertos.
+
+Clave de planeación: NH-6","Andreea Margarita Maldonado Morales","Medium","3","Sprint 0 · Planeación y diseño","notifyhub S0","Done","2026-10-09"
+"7","1001","Story","Contrato de API OpenAPI 3.1 (borrador)","","Criterios de aceptación: Endpoints, esquemas, códigos de error e idempotencia especificados.
+
+Clave de planeación: NH-7","José Raúl Soriano","High","3","Sprint 0 · Planeación y diseño","notifyhub S0","In Progress","2026-10-09"
+"8","1001","Story","Cronograma, backlog priorizado y tablero de seguimiento","","Criterios de aceptación: Backlog estimado en story points y asignado por sprint.
+
+Clave de planeación: NH-8","José Raúl Soriano","Medium","2","Sprint 0 · Planeación y diseño","notifyhub S0","Done","2026-10-09"
+"9","1001","Story","Matriz de riesgos y estrategia de pruebas","","Criterios de aceptación: Riesgos con probabilidad, impacto y mitigación; pirámide de pruebas definida.
+
+Clave de planeación: NH-9","Andreea Margarita Maldonado Morales","Medium","2","Sprint 0 · Planeación y diseño","notifyhub S0","In Progress","2026-10-09"
+"10","1002","Story","Monorepo pnpm + Turborepo con NestJS y TypeScript estricto","","Criterios de aceptación: Estructura de carpetas acordada, ESLint, Prettier, Conventional Commits y Husky.
+
+Clave de planeación: NH-10","José Raúl Soriano","High","3","Sprint 1 · Núcleo y recepción (RF1)","notifyhub S1","To Do","2026-10-23"
+"11","1002","Story","Entorno local con Docker Compose","","Criterios de aceptación: Postgres, Redis, Mailpit, WireMock (mocks de proveedores) y Grafana LGTM levantan con un comando.
+
+Clave de planeación: NH-11","José Raúl Soriano","High","3","Sprint 1 · Núcleo y recepción (RF1)","notifyhub S1","To Do","2026-10-23"
+"12","1002","Story","Pipeline CI en GitHub Actions","","Criterios de aceptación: Lint, pruebas, build e imagen Docker en cada pull request; rama main protegida.
+
+Clave de planeación: NH-12","José Raúl Soriano","High","3","Sprint 1 · Núcleo y recepción (RF1)","notifyhub S1","To Do","2026-10-23"
+"13","1002","Story","Gestión de secretos y configuración por entorno","","Criterios de aceptación: Credenciales de proveedores fuera del repo; configuración validada al arrancar.
+
+Clave de planeación: NH-13","José Raúl Soriano","Medium","2","Sprint 2 · Factorías y proveedores (RF2)","notifyhub S2","To Do","2026-11-06"
+"14","1003","Story","POST /v1/notifications con validación de la solicitud","","Criterios de aceptación: Acepta remitente, destinatario, mensaje, prioridad (alta/media/baja) y canal preferente; responde 202 con id.
+
+Clave de planeación: NH-14","Andreea Margarita Maldonado Morales","High","5","Sprint 1 · Núcleo y recepción (RF1)","notifyhub S1","To Do","2026-10-23"
+"15","1003","Story","Idempotency-Key y deduplicación de solicitudes","","Criterios de aceptación: Reintentos del cliente con la misma llave no generan envíos duplicados (24 h).
+
+Clave de planeación: NH-15","José Raúl Soriano","High","3","Sprint 1 · Núcleo y recepción (RF1)","notifyhub S1","To Do","2026-10-23"
+"16","1003","Story","Persistir solicitud y encolar por prioridad en BullMQ","","Criterios de aceptación: Tres colas (alta, media, baja); alta se procesa primero; estado inicial registrado.
+
+Clave de planeación: NH-16","Andreea Margarita Maldonado Morales","High","5","Sprint 1 · Núcleo y recepción (RF1)","notifyhub S1","To Do","2026-10-23"
+"17","1003","Story","Autenticación por API key y rate limiting por cliente","","Criterios de aceptación: 401 sin llave válida; 429 al exceder el límite configurado.
+
+Clave de planeación: NH-17","José Raúl Soriano","Medium","3","Sprint 1 · Núcleo y recepción (RF1)","notifyhub S1","To Do","2026-10-23"
+"18","1003","Story","Consulta de estado: GET /v1/notifications/{id}","","Criterios de aceptación: Devuelve estado actual e historial de intentos.
+
+Clave de planeación: NH-18","Andreea Margarita Maldonado Morales","Medium","2","Sprint 1 · Núcleo y recepción (RF1)","notifyhub S1","To Do","2026-10-23"
+"19","1004","Story","Interfaz NotificationSender y clase base (Template Method)","","Criterios de aceptación: Flujo validar → enviar → mapear respuesta común a todos los proveedores.
+
+Clave de planeación: NH-19","Andreea Margarita Maldonado Morales","High","3","Sprint 2 · Factorías y proveedores (RF2)","notifyhub S2","To Do","2026-11-06"
+"20","1004","Story","Factory Method: SenderCreator y registro configurable","","Criterios de aceptación: Alta de un proveedor nuevo sin tocar el despachador; proveedores declarados en routing.yaml.
+
+Clave de planeación: NH-20","Andreea Margarita Maldonado Morales","High","5","Sprint 2 · Factorías y proveedores (RF2)","notifyhub S2","To Do","2026-11-06"
+"21","1004","Story","Adaptador SendGrid (correo electrónico)","","Criterios de aceptación: Envío en sandbox; errores 4xx/5xx clasificados como permanentes o transitorios.
+
+Clave de planeación: NH-21","Andreea Margarita Maldonado Morales","High","3","Sprint 2 · Factorías y proveedores (RF2)","notifyhub S2","To Do","2026-11-06"
+"22","1004","Story","Adaptador Twilio (SMS)","","Criterios de aceptación: Envío a número verificado; SID del mensaje guardado como referencia.
+
+Clave de planeación: NH-22","José Raúl Soriano","High","3","Sprint 2 · Factorías y proveedores (RF2)","notifyhub S2","To Do","2026-11-06"
+"23","1004","Story","Adaptador Firebase Cloud Messaging (push)","","Criterios de aceptación: Envío a token de dispositivo de prueba; tokens inválidos marcados como error permanente.
+
+Clave de planeación: NH-23","Andreea Margarita Maldonado Morales","High","3","Sprint 2 · Factorías y proveedores (RF2)","notifyhub S2","To Do","2026-11-06"
+"24","1004","Story","Adaptador Webhook genérico con firma HMAC","","Criterios de aceptación: POST firmado (X-Signature) con timeout configurable.
+
+Clave de planeación: NH-24","José Raúl Soriano","Medium","3","Sprint 2 · Factorías y proveedores (RF2)","notifyhub S2","To Do","2026-11-06"
+"25","1004","Story","Worker despachador que consume colas y usa la factoría","","Criterios de aceptación: Concurrencia configurable por cola; apagado ordenado sin perder trabajos.
+
+Clave de planeación: NH-25","José Raúl Soriano","High","5","Sprint 2 · Factorías y proveedores (RF2)","notifyhub S2","To Do","2026-11-06"
+"26","1005","Story","Strategy: selección de proveedor por costo, prioridad o disponibilidad","","Criterios de aceptación: Estrategia intercambiable en configuración; alta prioridad favorece confiabilidad sobre costo.
+
+Clave de planeación: NH-26","Andreea Margarita Maldonado Morales","High","5","Sprint 3 · Fallback y auditoría (RF3, RF4)","notifyhub S3","To Do","2026-11-20"
+"27","1005","Story","Política de fallback a canal secundario","","Criterios de aceptación: Si el proveedor principal falla, se conmuta al siguiente canal/proveedor de la cadena.
+
+Clave de planeación: NH-27","José Raúl Soriano","High","5","Sprint 3 · Fallback y auditoría (RF3, RF4)","notifyhub S3","To Do","2026-11-20"
+"28","1005","Story","Reintentos con backoff exponencial y circuit breaker por proveedor","","Criterios de aceptación: Errores transitorios se reintentan; circuito abierto salta directo al fallback.
+
+Clave de planeación: NH-28","José Raúl Soriano","High","5","Sprint 3 · Fallback y auditoría (RF3, RF4)","notifyhub S3","To Do","2026-11-20"
+"29","1005","Story","Health checks de proveedores","","Criterios de aceptación: Proveedores degradados bajan de rango en la estrategia de disponibilidad.
+
+Clave de planeación: NH-29","José Raúl Soriano","Medium","3","Sprint 3 · Fallback y auditoría (RF3, RF4)","notifyhub S3","To Do","2026-11-20"
+"30","1006","Story","Tablas delivery_attempt y audit_log append-only","","Criterios de aceptación: Sin UPDATE/DELETE sobre audit_log; particionado mensual.
+
+Clave de planeación: NH-30","Andreea Margarita Maldonado Morales","High","3","Sprint 3 · Fallback y auditoría (RF3, RF4)","notifyhub S3","To Do","2026-11-20"
+"31","1006","Story","Registrar cada intento: fecha, canal, estado y respuesta del proveedor","","Criterios de aceptación: Estados enviado, fallido y reintentando con respuesta cruda sanitizada.
+
+Clave de planeación: NH-31","Andreea Margarita Maldonado Morales","High","3","Sprint 3 · Fallback y auditoría (RF3, RF4)","notifyhub S3","To Do","2026-11-20"
+"32","1006","Story","Enmascarado de datos personales y política de retención","","Criterios de aceptación: Correos y teléfonos enmascarados en bitácora; retención de 12 meses.
+
+Clave de planeación: NH-32","José Raúl Soriano","Medium","2","Sprint 3 · Fallback y auditoría (RF3, RF4)","notifyhub S3","To Do","2026-11-20"
+"33","1006","Story","Consulta de bitácora con filtros y paginación","","Criterios de aceptación: Filtros por fecha, canal, estado y proveedor; paginación por cursor.
+
+Clave de planeación: NH-33","José Raúl Soriano","Medium","3","Sprint 4 · Eventos, observabilidad y entrega (RF5)","notifyhub S4","To Do","2026-12-04"
+"34","1007","Story","Observer: publicador de eventos y suscriptores internos","","Criterios de aceptación: Cada cambio de estado notifica a auditoría, métricas y outbox sin acoplarlos al despachador.
+
+Clave de planeación: NH-34","Andreea Margarita Maldonado Morales","High","5","Sprint 4 · Eventos, observabilidad y entrega (RF5)","notifyhub S4","To Do","2026-12-04"
+"35","1007","Story","Outbox transaccional y publicación a Redis Streams","","Criterios de aceptación: Ningún evento se pierde si cae el proceso entre guardar y publicar.
+
+Clave de planeación: NH-35","José Raúl Soriano","High","5","Sprint 4 · Eventos, observabilidad y entrega (RF5)","notifyhub S4","To Do","2026-12-04"
+"36","1007","Story","Suscripciones externas por webhook","","Criterios de aceptación: Alta de suscriptor por tipo de evento; entregas firmadas y con reintento.
+
+Clave de planeación: NH-36","Andreea Margarita Maldonado Morales","Medium","3","Sprint 4 · Eventos, observabilidad y entrega (RF5)","notifyhub S4","To Do","2026-12-04"
+"37","1007","Story","Dashboard Grafana de monitoreo y analítica","","Criterios de aceptación: Tasa de éxito por canal, latencia p95, fallbacks y costo estimado.
+
+Clave de planeación: NH-37","José Raúl Soriano","Medium","3","Sprint 4 · Eventos, observabilidad y entrega (RF5)","notifyhub S4","To Do","2026-12-04"
+"38","1008","Story","Pruebas unitarias de dominio y patrones","","Criterios de aceptación: Cobertura ≥ 80 % en domain, routing y providers.
+
+Clave de planeación: NH-38","Andreea Margarita Maldonado Morales","High","5","Sprint 4 · Eventos, observabilidad y entrega (RF5)","notifyhub S4","To Do","2026-12-04"
+"39","1008","Story","Pruebas de integración con Testcontainers y proveedores simulados","","Criterios de aceptación: Escenarios de éxito, reintento y fallback automatizados en CI.
+
+Clave de planeación: NH-39","Andreea Margarita Maldonado Morales","High","5","Sprint 3 · Fallback y auditoría (RF3, RF4)","notifyhub S3","To Do","2026-11-20"
+"40","1008","Story","Prueba de carga con k6 y prueba de caída de proveedor","","Criterios de aceptación: 1,000 notificaciones/min con p95 de aceptación < 200 ms; fallback verificado.
+
+Clave de planeación: NH-40","José Raúl Soriano","Medium","3","Sprint 4 · Eventos, observabilidad y entrega (RF5)","notifyhub S4","To Do","2026-12-04"
+"41","1008","Story","Documentación final, demo y presentación","","Criterios de aceptación: README, guía de despliegue, video demo y presentación de cierre.
+
+Clave de planeación: NH-41","José Raúl Soriano","High","3","Sprint 4 · Eventos, observabilidad y entrega (RF5)","notifyhub S4","To Do","2026-12-04"

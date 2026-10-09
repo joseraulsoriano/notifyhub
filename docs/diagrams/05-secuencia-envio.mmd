@@ -1,0 +1,37 @@
+sequenceDiagram
+  autonumber
+  actor C as App cliente
+  participant API as API REST
+  participant DB as PostgreSQL
+  participant Q as BullMQ
+  participant D as DispatchService
+  participant S as Strategy
+  participant F as SenderRegistry
+  participant P1 as Proveedor principal
+  participant P2 as Proveedor secundario
+  participant E as EventPublisher
+  C->>API: POST /v1/notifications + Idempotency-Key
+  API->>DB: guardar solicitud (RECEIVED)
+  API->>Q: encolar según prioridad
+  API-->>C: 202 Accepted {id}
+  Q->>D: tomar trabajo
+  D->>S: rank(request, proveedores)
+  S-->>D: [principal, secundario]
+  D->>F: getSender(principal)
+  F-->>D: sender concreto
+  D->>P1: send()
+  alt Envío exitoso
+    P1-->>D: 202 + messageId
+    D->>E: publish(SENT)
+  else Error transitorio
+    P1-->>D: 503 / timeout
+    D->>E: publish(RETRYING)
+    Note over D,P1: backoff exponencial, máx. 3 intentos
+  else Reintentos agotados o circuito abierto
+    D->>E: publish(FAILED en canal principal)
+    D->>F: getSender(secundario)
+    D->>P2: send() como fallback
+    P2-->>D: 200 OK
+    D->>E: publish(SENT vía fallback)
+  end
+  E->>DB: bitácora + outbox (misma transacción)

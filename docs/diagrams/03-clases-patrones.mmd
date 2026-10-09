@@ -1,0 +1,94 @@
+classDiagram
+  direction LR
+  class NotificationRequest {
+    +UUID id
+    +String idempotencyKey
+    +Sender sender
+    +Recipient recipient
+    +Message message
+    +Priority priority
+    +Channel preferredChannel
+    +NotificationStatus status
+  }
+  class NotificationSender {
+    <<interface>>
+    +send(request) DeliveryResult
+    +channel() Channel
+  }
+  class BaseSender {
+    <<abstract>>
+    +send(request) DeliveryResult
+    #validate(request) void
+    #doSend(request)* ProviderResponse
+    #mapResponse(response) DeliveryResult
+  }
+  class SendGridEmailSender
+  class TwilioSmsSender
+  class FcmPushSender
+  class WebhookSender
+  class SenderCreator {
+    <<abstract>>
+    +createSender(config)* NotificationSender
+  }
+  class SendGridCreator
+  class TwilioCreator
+  class FcmCreator
+  class WebhookCreator
+  class SenderRegistry {
+    -creators Map
+    +register(providerId, creator) void
+    +getSender(providerId) NotificationSender
+  }
+  class ProviderSelectionStrategy {
+    <<interface>>
+    +rank(request, candidates) Provider[]
+  }
+  class CostStrategy
+  class PriorityStrategy
+  class AvailabilityStrategy
+  class FallbackPolicy {
+    +nextChannel(request, failed) Channel
+  }
+  class DispatchService {
+    -strategy ProviderSelectionStrategy
+    -registry SenderRegistry
+    -fallback FallbackPolicy
+    -publisher EventPublisher
+    +dispatch(request) void
+  }
+  class EventPublisher {
+    <<subject>>
+    +subscribe(subscriber) void
+    +unsubscribe(subscriber) void
+    +publish(event) void
+  }
+  class EventSubscriber {
+    <<interface>>
+    +onEvent(event) void
+  }
+  class AuditLogSubscriber
+  class MetricsSubscriber
+  class OutboxSubscriber
+  NotificationSender <|.. BaseSender
+  BaseSender <|-- SendGridEmailSender
+  BaseSender <|-- TwilioSmsSender
+  BaseSender <|-- FcmPushSender
+  BaseSender <|-- WebhookSender
+  SenderCreator <|-- SendGridCreator
+  SenderCreator <|-- TwilioCreator
+  SenderCreator <|-- FcmCreator
+  SenderCreator <|-- WebhookCreator
+  SenderCreator ..> NotificationSender : crea
+  SenderRegistry o-- SenderCreator
+  ProviderSelectionStrategy <|.. CostStrategy
+  ProviderSelectionStrategy <|.. PriorityStrategy
+  ProviderSelectionStrategy <|.. AvailabilityStrategy
+  DispatchService --> ProviderSelectionStrategy : Strategy
+  DispatchService --> SenderRegistry : Factory Method
+  DispatchService --> FallbackPolicy
+  DispatchService --> EventPublisher : Observer
+  DispatchService ..> NotificationRequest
+  EventPublisher o-- EventSubscriber
+  EventSubscriber <|.. AuditLogSubscriber
+  EventSubscriber <|.. MetricsSubscriber
+  EventSubscriber <|.. OutboxSubscriber

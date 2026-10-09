@@ -1,0 +1,328 @@
+openapi: 3.1.0
+info:
+  title: NotifyHub API
+  version: 0.1.0
+  license: { name: Uso académico }
+  summary: Servicio de Notificaciones y Registro Multicanal
+  description: |
+    Recibe solicitudes de notificación (RF1), las despacha de forma asíncrona por el proveedor adecuado
+    (RF2, RF3) y expone su estado y bitácora (RF4).
+
+    **Autenticación:** cada cliente envía su llave en `X-API-Key`.
+
+    **Idempotencia:** si se envía `Idempotency-Key`, los reintentos con la misma llave y el mismo cuerpo
+    durante 24 h devuelven la notificación original (encabezado `Idempotent-Replayed: true`) y no generan
+    otro envío. La misma llave con un cuerpo distinto responde `409`.
+
+    **Límite de solicitudes:** cada cliente tiene un límite por minuto. Las respuestas incluyen
+    `RateLimit-Limit`, `RateLimit-Remaining` y `RateLimit-Reset`; al excederlo se responde `429` con `Retry-After`.
+
+    **Errores:** todos usan `application/problem+json` (RFC 9457).
+servers:
+  - url: http://localhost:3000
+    description: Local (Docker Compose)
+security:
+  - ApiKey: []
+tags:
+  - name: Notificaciones
+    description: Recepción y consulta de notificaciones (RF1)
+  - name: Bitácora
+    description: Auditoría de intentos de envío (RF4)
+  - name: Salud
+    description: Verificaciones para el orquestador
+
+paths:
+  /v1/notifications:
+    post:
+      tags: [Notificaciones]
+      operationId: createNotification
+      summary: Recibir una solicitud de notificación (RF1)
+      description: |
+        Valida, persiste y encola la solicitud según su prioridad, y responde de inmediato con `202`.
+        El envío ocurre en segundo plano; su avance se consulta con `GET /v1/notifications/{id}`.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateNotificationRequest' }
+            examples:
+              correo:
+                summary: Alerta por correo de prioridad alta
+                value:
+                  sender: { name: Banco Demo, email: alertas@banco.demo }
+                  recipient: { email: ana@example.com, phone: '+5212221234567' }
+                  message: { subject: Cargo detectado, body: 'Se hizo un cargo de $1,200 a tu tarjeta.' }
+                  priority: alta
+                  preferredChannel: EMAIL
+      responses:
+        '202':
+          description: Solicitud aceptada y encolada (o reproducida por idempotencia)
+          headers:
+            Location: { schema: { type: string }, description: Ruta del recurso creado }
+            Idempotent-Replayed:
+              {
+                schema: { type: string, enum: ['true'] },
+                description: Presente si se reprodujo una solicitud previa,
+              }
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimit-Limit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimit-Remaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimit-Reset' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NotificationSummary' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: La Idempotency-Key ya se usó con un cuerpo distinto
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /v1/notifications/{id}:
+    get:
+      tags: [Notificaciones]
+      operationId: getNotification
+      summary: Consultar estado e historial de intentos
+      parameters:
+        - $ref: '#/components/parameters/NotificationId'
+      responses:
+        '200':
+          description: Estado actual, intentos de entrega e historial de estados
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NotificationDetail' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: No existe o pertenece a otro cliente
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /v1/audit-log:
+    get:
+      tags: [Bitácora]
+      operationId: listAuditLog
+      summary: Consultar la bitácora de auditoría (RF4) — planeado para el Sprint 4 (NH-33)
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - { name: channel, in: query, schema: { $ref: '#/components/schemas/Channel' } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/AttemptStatus' } }
+        - { name: provider, in: query, schema: { type: string, examples: [twilio] } }
+        - {
+            name: cursor,
+            in: query,
+            schema: { type: string },
+            description: Cursor opaco de la página anterior,
+          }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+      responses:
+        '200':
+          description: Página de entradas de bitácora
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/AuditEntry' } }
+                  nextCursor: { type: [string, 'null'] }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /health:
+    get:
+      tags: [Salud]
+      operationId: health
+      summary: Verificación de vida (sin autenticación)
+      security: []
+      responses:
+        '200':
+          description: El proceso responde
+          content:
+            application/json:
+              schema: { type: object, properties: { status: { const: ok } } }
+
+components:
+  securitySchemes:
+    ApiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: Llave única por intento lógico del cliente (8–255 caracteres). Vigencia de 24 h.
+      schema: { type: string, minLength: 8, maxLength: 255 }
+    NotificationId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  headers:
+    RateLimit-Limit: { schema: { type: integer }, description: Solicitudes permitidas por ventana }
+    RateLimit-Remaining: { schema: { type: integer }, description: Solicitudes restantes en la ventana }
+    RateLimit-Reset: { schema: { type: integer }, description: Segundos para reiniciar la ventana }
+
+  responses:
+    ValidationError:
+      description: Cuerpo o parámetros inválidos; `errors` detalla cada campo
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+          example:
+            type: https://notifyhub.dev/problems/validation
+            title: Solicitud inválida
+            status: 400
+            errors:
+              - { path: recipient.deviceToken, message: el canal PUSH requiere recipient.deviceToken }
+    Unauthorized:
+      description: Falta X-API-Key, o es inválida o está revocada
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    TooManyRequests:
+      description: Se excedió el límite del cliente
+      headers:
+        Retry-After: { schema: { type: integer }, description: Segundos de espera }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+
+  schemas:
+    Priority:
+      description: La API normaliza a HIGH, MEDIUM o LOW; también acepta `alta`, `media` y `baja` sin importar mayúsculas.
+      type: string
+      enum: [HIGH, MEDIUM, LOW, alta, media, baja]
+    Channel:
+      type: string
+      enum: [EMAIL, SMS, PUSH, WEBHOOK]
+    NotificationStatus:
+      type: string
+      enum: [RECEIVED, QUEUED, SENDING, RETRYING, FALLBACK, SENT, DELIVERED, FAILED]
+    AttemptStatus:
+      type: string
+      enum: [SENT, FAILED, RETRYING]
+    E164:
+      type: string
+      pattern: '^\+[1-9]\d{7,14}$'
+      examples: ['+5212221234567']
+
+    CreateNotificationRequest:
+      type: object
+      additionalProperties: false
+      required: [sender, recipient, message, priority, preferredChannel]
+      description: El destinatario debe incluir el dato del canal preferente (EMAIL→email, SMS→phone, PUSH→deviceToken, WEBHOOK→webhookUrl). Los demás datos habilitan el fallback.
+      properties:
+        sender:
+          type: object
+          required: [name]
+          properties:
+            name: { type: string, minLength: 1, maxLength: 120 }
+            email: { type: string, format: email }
+            phone: { $ref: '#/components/schemas/E164' }
+        recipient:
+          type: object
+          minProperties: 1
+          properties:
+            email: { type: string, format: email }
+            phone: { $ref: '#/components/schemas/E164' }
+            deviceToken: { type: string, minLength: 10, maxLength: 4096 }
+            webhookUrl: { type: string, format: uri, pattern: '^https://' }
+        message:
+          type: object
+          required: [body]
+          properties:
+            subject: { type: string, maxLength: 200 }
+            body: { type: string, minLength: 1, maxLength: 10000 }
+            data: { type: object, additionalProperties: { type: string } }
+        priority: { $ref: '#/components/schemas/Priority' }
+        preferredChannel: { $ref: '#/components/schemas/Channel' }
+
+    NotificationSummary:
+      type: object
+      required: [id, status, priority, preferredChannel, createdAt, links]
+      properties:
+        id: { type: string, format: uuid }
+        status: { $ref: '#/components/schemas/NotificationStatus' }
+        priority: { $ref: '#/components/schemas/Priority' }
+        preferredChannel: { $ref: '#/components/schemas/Channel' }
+        createdAt: { type: string, format: date-time }
+        links:
+          type: object
+          properties:
+            self: { type: string, examples: ['/v1/notifications/3f1c…'] }
+
+    NotificationDetail:
+      allOf:
+        - $ref: '#/components/schemas/NotificationSummary'
+        - type: object
+          required: [updatedAt, attempts, history]
+          properties:
+            updatedAt: { type: string, format: date-time }
+            attempts:
+              type: array
+              items: { $ref: '#/components/schemas/DeliveryAttempt' }
+            history:
+              type: array
+              items:
+                type: object
+                properties:
+                  from: { oneOf: [{ $ref: '#/components/schemas/NotificationStatus' }, { type: 'null' }] }
+                  to: { $ref: '#/components/schemas/NotificationStatus' }
+                  at: { type: string, format: date-time }
+
+    DeliveryAttempt:
+      type: object
+      properties:
+        attemptNumber: { type: integer, minimum: 1 }
+        provider: { type: string, examples: [sendgrid, twilio, fcm, webhook] }
+        channel: { $ref: '#/components/schemas/Channel' }
+        status: { $ref: '#/components/schemas/AttemptStatus' }
+        isFallback: { type: boolean }
+        providerMessageId: { type: [string, 'null'] }
+        errorCode: { type: [string, 'null'] }
+        latencyMs: { type: [integer, 'null'] }
+        attemptedAt: { type: string, format: date-time }
+
+    AuditEntry:
+      type: object
+      properties:
+        id: { type: string }
+        notificationId: { type: string, format: uuid }
+        eventType: { type: string }
+        fromStatus: { oneOf: [{ $ref: '#/components/schemas/NotificationStatus' }, { type: 'null' }] }
+        toStatus: { $ref: '#/components/schemas/NotificationStatus' }
+        channel: { oneOf: [{ $ref: '#/components/schemas/Channel' }, { type: 'null' }] }
+        providerCode: { type: [string, 'null'] }
+        detail:
+          {
+            type: [object, 'null'],
+            description: Respuesta del proveedor sanitizada (datos personales enmascarados),
+          }
+        occurredAt: { type: string, format: date-time }
+
+    Problem:
+      type: object
+      description: RFC 9457
+      required: [type, title, status]
+      properties:
+        type: { type: string, format: uri-reference }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              path: { type: string }
+              message: { type: string }

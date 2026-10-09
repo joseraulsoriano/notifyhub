@@ -1,0 +1,22 @@
+flowchart LR
+  dev["Desarrolladores"] -- "push / PR" --> gh["GitHub<br/>repo + Actions"]
+  gh -- "imagen Docker" --> reg["GHCR<br/>registro de imágenes"]
+  subgraph cloud["Nube (Fly.io o AWS ECS)"]
+    lb["Balanceador HTTPS"]
+    api["api × 2"]
+    wk["dispatcher × N<br/>escala por tamaño de cola"]
+    rl["event-relay × 1"]
+    pg[("PostgreSQL gestionado")]
+    rd[("Redis gestionado")]
+  end
+  reg --> api
+  reg --> wk
+  reg --> rl
+  lb --> api
+  api --> pg
+  api --> rd
+  wk --> rd
+  wk --> pg
+  rl --> pg
+  rl --> rd
+  cloud -. "OTLP" .-> gc["Grafana Cloud<br/>métricas, logs, trazas"]
