@@ -1,6 +1,6 @@
 name: Deploy
 
-# Manual a propósito: cada despliegue cuesta tiempo de contenedor y aplica migraciones en Neon.
+# Manual a propósito: aplica migraciones en Neon y publica el Worker en producción.
 on:
   workflow_dispatch:
 
@@ -10,7 +10,7 @@ concurrency:
 
 jobs:
   deploy:
-    name: Migraciones y despliegue a Cloudflare
+    name: Migraciones y despliegue a Cloudflare Workers
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -21,14 +21,13 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm turbo run build --filter=@notifyhub/persistence...
+      - run: pnpm turbo run build --filter=@notifyhub/persistence... --filter=@notifyhub/shared
       - name: Migraciones en Neon
         run: pnpm --filter @notifyhub/persistence db:deploy
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      - name: wrangler deploy (Worker + imagen del contenedor)
-        working-directory: apps/edge
-        run: pnpm wrangler deploy
+      - name: wrangler deploy
+        run: pnpm --filter @notifyhub/api run deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

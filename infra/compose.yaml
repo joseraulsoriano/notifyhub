@@ -15,15 +15,6 @@ services:
       interval: 5s
       retries: 10
 
-  redis:
-    image: redis:7-alpine
-    command: ['redis-server', '--appendonly', 'yes']
-    ports: ['6379:6379']
-    healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
-      interval: 5s
-      retries: 10
-
   # SMTP falso para probar correo sin SendGrid: http://localhost:8025
   mailpit:
     image: axllent/mailpit:latest
@@ -41,19 +32,8 @@ services:
     image: grafana/otel-lgtm:latest
     ports: ['3001:3000', '4317:4317', '4318:4318']
 
-  api:
-    profiles: [app]
-    build:
-      context: ..
-      dockerfile: infra/docker/api.Dockerfile
-    env_file: ../.env.example
-    environment:
-      DATABASE_URL: postgresql://notifyhub:notifyhub@postgres:5432/notifyhub
-      REDIS_URL: redis://redis:6379
-    ports: ['3000:3000']
-    depends_on:
-      postgres: { condition: service_healthy }
-      redis: { condition: service_healthy }
+# La API corre como Worker con `pnpm dev` (wrangler dev): Queues y Durable Objects se simulan en local
+# y Hyperdrive apunta a este Postgres (ADR-007).
 
 volumes:
   pgdata:

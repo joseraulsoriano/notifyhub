@@ -1,12 +1,12 @@
 flowchart TB
   cli["Aplicaciones cliente"]
   subgraph NH["NotifyHub"]
-    api["API REST<br/>NestJS · RF1"]
-    q[("Redis · BullMQ<br/>colas alta / media / baja")]
-    disp["Dispatcher workers<br/>Factory Method + Strategy<br/>RF2 · RF3"]
+    api["API REST<br/>Worker Hono · RF1"]
+    q[("Cloudflare Queues<br/>colas alta / media / baja")]
+    disp["Dispatcher<br/>Worker consumidor<br/>Factory Method + Strategy<br/>RF2 · RF3"]
     db[("PostgreSQL<br/>notificaciones, intentos,<br/>bitácora, outbox · RF4")]
-    relay["Event relay<br/>outbox → Redis Streams · RF5"]
-    bus[("Redis Streams<br/>bus de eventos")]
+    relay["Event relay<br/>outbox → cola de eventos · RF5"]
+    bus[("Cloudflare Queues<br/>cola de eventos")]
     subw["Subscriber worker<br/>webhooks a suscriptores"]
   end
   prov["Proveedores<br/>SendGrid · Twilio · FCM · Webhook"]

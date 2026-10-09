@@ -1,8 +1,7 @@
-import 'reflect-metadata';
-import type { INestApplication } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
 import {
+  AcceptNotification,
   FixedClock,
+  GetNotificationStatus,
   hashApiKey,
   InMemoryClientAppRepository,
   InMemoryNotificationQueue,
@@ -10,18 +9,8 @@ import {
   InMemoryRateLimiter,
   SequentialIds,
 } from '@notifyhub/application';
-import request from 'supertest';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { AppModule } from '../src/app.module';
-import {
-  APP_CONFIG,
-  CLIENT_APP_REPOSITORY,
-  CLOCK,
-  ID_GENERATOR,
-  NOTIFICATION_QUEUE,
-  NOTIFICATION_REPOSITORY,
-  RATE_LIMITER,
-} from '../src/tokens';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { createApp } from '../src/app';
 
 const API_KEY = 'nh_test_key_123';
 const OTHER_KEY = 'nh_other_key_456';
@@ -35,65 +24,72 @@ const validBody = {
 };
 
 describe('API /v1/notifications', () => {
-  let app: INestApplication;
+  let app: ReturnType<typeof createApp>;
   let queue: InMemoryNotificationQueue;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     queue = new InMemoryNotificationQueue();
     const clients = new InMemoryClientAppRepository();
     clients.add(hashApiKey(API_KEY), { id: 'app-1', name: 'Pruebas', rateLimitPerMin: 5, active: true });
     clients.add(hashApiKey(OTHER_KEY), { id: 'app-2', name: 'Otra app', rateLimitPerMin: 5, active: true });
-
-    const moduleRef = await Test.createTestingModule({
-      imports: [
-        AppModule.register([
-          { provide: APP_CONFIG, useValue: { RATE_LIMIT_WINDOW_SECONDS: 60 } },
-          { provide: NOTIFICATION_REPOSITORY, useValue: new InMemoryNotificationRepository() },
-          { provide: NOTIFICATION_QUEUE, useValue: queue },
-          { provide: CLIENT_APP_REPOSITORY, useValue: clients },
-          { provide: RATE_LIMITER, useValue: new InMemoryRateLimiter() },
-          { provide: CLOCK, useValue: new FixedClock() },
-          { provide: ID_GENERATOR, useValue: new SequentialIds() },
-        ]),
-      ],
-    }).compile();
-    app = moduleRef.createNestApplication({ logger: false });
-    await app.init();
+    const repository = new InMemoryNotificationRepository();
+    const deps = {
+      config: { RATE_LIMIT_WINDOW_SECONDS: 60 },
+      clients,
+      limiter: new InMemoryRateLimiter(),
+      accept: new AcceptNotification(repository, queue, new FixedClock(), new SequentialIds()),
+      getStatus: new GetNotificationStatus(repository),
+    };
+    app = createApp(async () => ({ deps }));
   });
 
-  afterEach(async () => {
-    await app.close();
-  });
-
-  const post = (body: unknown = validBody, key = API_KEY) =>
-    request(app.getHttpServer())
-      .post('/v1/notifications')
-      .set('X-API-Key', key)
-      .send(body as object);
+  const post = (
+    body: unknown = validBody,
+    key: string | null = API_KEY,
+    headers: Record<string, string> = {},
+  ) =>
+    app.request('/v1/notifications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(key ? { 'X-API-Key': key } : {}), ...headers },
+      body: JSON.stringify(body),
+    });
+  const get = (path: string, key = API_KEY) => app.request(path, { headers: { 'X-API-Key': key } });
+  /** Los campos que revisan las pruebas, tanto de la notificación como del problem+json. */
+  interface Body {
+    id: string;
+    status: string;
+    links: { self: string };
+    attempts: unknown[];
+    history: { to: string }[];
+    errors: { path: string; message: string }[];
+  }
+  const json = (res: Response) => res.json() as Promise<Body>;
 
   it('responde 202 con id y la encola en la cola de su prioridad', async () => {
     const res = await post();
+    const body = await json(res);
 
     expect(res.status).toBe(202);
-    expect(res.body).toMatchObject({ status: 'QUEUED', priority: 'HIGH', preferredChannel: 'EMAIL' });
-    expect(res.headers.location).toBe(`/v1/notifications/${res.body.id}`);
-    expect(queue.jobs).toEqual([{ notificationId: res.body.id, priority: 'HIGH' }]);
+    expect(body).toMatchObject({ status: 'QUEUED', priority: 'HIGH', preferredChannel: 'EMAIL' });
+    expect(res.headers.get('location')).toBe(`/v1/notifications/${body.id}`);
+    expect(queue.jobs).toEqual([{ notificationId: body.id, priority: 'HIGH' }]);
   });
 
   it('responde 401 sin API key o con una inválida', async () => {
-    const missing = await request(app.getHttpServer()).post('/v1/notifications').send(validBody);
+    const missing = await post(validBody, null);
     const wrong = await post(validBody, 'nh_no_existe');
 
     expect(missing.status).toBe(401);
     expect(wrong.status).toBe(401);
-    expect(wrong.headers['content-type']).toContain('application/problem+json');
+    expect(wrong.headers.get('content-type')).toContain('application/problem+json');
   });
 
   it('responde 400 con el detalle de cada campo inválido', async () => {
     const res = await post({ ...validBody, priority: 'urgente', recipient: { phone: '2221234567' } });
+    const body = await json(res);
 
     expect(res.status).toBe(400);
-    const paths = res.body.errors.map((e: { path: string }) => e.path);
+    const paths = body.errors.map((e: { path: string }) => e.path);
     expect(paths).toEqual(expect.arrayContaining(['priority', 'recipient.phone']));
   });
 
@@ -101,29 +97,38 @@ describe('API /v1/notifications', () => {
     const res = await post({ ...validBody, preferredChannel: 'PUSH' });
 
     expect(res.status).toBe(400);
-    expect(res.body.errors).toEqual([
+    expect((await json(res)).errors).toEqual([
       { path: 'recipient.deviceToken', message: 'el canal PUSH requiere recipient.deviceToken' },
     ]);
   });
 
-  it('rechaza campos desconocidos', async () => {
-    const res = await post({ ...validBody, provider: 'twilio' });
-    expect(res.status).toBe(400);
+  it('rechaza campos desconocidos y cuerpos que no son JSON', async () => {
+    const unknownField = await post({ ...validBody, provider: 'twilio' });
+    const notJson = await app.request('/v1/notifications', {
+      method: 'POST',
+      headers: { 'X-API-Key': API_KEY },
+      body: 'hola',
+    });
+
+    expect(unknownField.status).toBe(400);
+    expect(notJson.status).toBe(400);
   });
 
   it('con la misma Idempotency-Key no genera un segundo envío', async () => {
-    const first = await post().set('Idempotency-Key', 'pedido-0001');
-    const second = await post().set('Idempotency-Key', 'pedido-0001');
+    const first = await json(await post(validBody, API_KEY, { 'Idempotency-Key': 'pedido-0001' }));
+    const second = await post(validBody, API_KEY, { 'Idempotency-Key': 'pedido-0001' });
 
     expect(second.status).toBe(202);
-    expect(second.body.id).toBe(first.body.id);
-    expect(second.headers['idempotent-replayed']).toBe('true');
+    expect((await json(second)).id).toBe(first.id);
+    expect(second.headers.get('idempotent-replayed')).toBe('true');
     expect(queue.jobs).toHaveLength(1);
   });
 
   it('responde 409 si la Idempotency-Key se reutiliza con otro contenido', async () => {
-    await post().set('Idempotency-Key', 'pedido-0002');
-    const res = await post({ ...validBody, message: { body: 'otro' } }).set('Idempotency-Key', 'pedido-0002');
+    await post(validBody, API_KEY, { 'Idempotency-Key': 'pedido-0002' });
+    const res = await post({ ...validBody, message: { body: 'otro' } }, API_KEY, {
+      'Idempotency-Key': 'pedido-0002',
+    });
 
     expect(res.status).toBe(409);
   });
@@ -135,30 +140,31 @@ describe('API /v1/notifications', () => {
 
     expect(statuses.slice(0, 5)).toEqual([202, 202, 202, 202, 202]);
     expect(statuses[5]).toBe(429);
-    expect(last.headers['retry-after']).toBeDefined();
-    expect(last.headers['ratelimit-remaining']).toBe('0');
+    expect(last.headers.get('retry-after')).not.toBeNull();
+    expect(last.headers.get('ratelimit-remaining')).toBe('0');
   });
 
   it('GET devuelve el estado y el historial, solo al cliente dueño', async () => {
-    const { body: created } = await post();
+    const created = await json(await post());
 
-    const own = await request(app.getHttpServer()).get(created.links.self).set('X-API-Key', API_KEY);
-    const other = await request(app.getHttpServer()).get(created.links.self).set('X-API-Key', OTHER_KEY);
+    const own = await get(created.links.self);
+    const other = await get(created.links.self, OTHER_KEY);
+    const body = await json(own);
 
     expect(own.status).toBe(200);
-    expect(own.body.status).toBe('QUEUED');
-    expect(own.body.attempts).toEqual([]);
-    expect(own.body.history.map((h: { to: string }) => h.to)).toEqual(['RECEIVED', 'QUEUED']);
+    expect(body.status).toBe('QUEUED');
+    expect(body.attempts).toEqual([]);
+    expect(body.history.map((h: { to: string }) => h.to)).toEqual(['RECEIVED', 'QUEUED']);
     expect(other.status).toBe(404);
   });
 
   it('GET con un id que no es UUID responde 400', async () => {
-    const res = await request(app.getHttpServer()).get('/v1/notifications/abc').set('X-API-Key', API_KEY);
+    const res = await get('/v1/notifications/abc');
     expect(res.status).toBe(400);
   });
 
   it('/health no pide API key', async () => {
-    const res = await request(app.getHttpServer()).get('/health');
-    expect(res.body).toEqual({ status: 'ok' });
+    const res = await app.request('/health');
+    expect(await res.json()).toEqual({ status: 'ok' });
   });
 });

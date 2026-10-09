@@ -1,16 +1,18 @@
 flowchart LR
-  dev["Desarrolladores"] -- "push / PR" --> gh["GitHub<br/>repo + Actions"]
-  gh -- "CI: imagen Docker" --> reg["GHCR"]
+  dev["Desarrolladores"] -- "push / PR" --> gh["GitHub<br/>repo + Actions (CI)"]
   gh -- "Deploy (manual):<br/>migraciones + wrangler deploy" --> cf
-  subgraph cf["Cloudflare (Workers Paid)"]
-    edge["Worker notifyhub<br/>apps/edge"]
-    api["ApiContainer × 2<br/>NestJS · basic"]
-    wk["DispatcherContainer<br/>(S2)"]
-    edge --> api
+  cli["Clientes<br/>X-API-Key"] -- "HTTPS" --> api
+  subgraph cf["Cloudflare · plan gratuito"]
+    api["Worker notifyhub-api<br/>Hono · RF1"]
+    rl["Durable Object<br/>RateLimiterObject"]
+    q[("Queues<br/>high / medium / low")]
+    hd["Hyperdrive<br/>pool de conexiones"]
+    disp["Worker dispatcher<br/>consumidor (S2)"]
+    api --> rl
+    api --> q
+    api --> hd
+    q -.-> disp
+    disp -.-> hd
   end
-  cli["Clientes<br/>API key"] -- "HTTPS" --> edge
-  api -- "TCP/TLS" --> pg[("Neon Postgres<br/>aws-us-east-1")]
-  api -- "TCP/TLS" --> rd[("Redis gestionado<br/>BullMQ")]
-  wk -.-> rd
-  wk -.-> pg
+  hd -- "TLS" --> pg[("Neon Postgres<br/>aws-us-east-1")]
   cf -. "OTLP" .-> gc["Grafana Cloud<br/>métricas, logs, trazas"]

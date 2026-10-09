@@ -1,6 +1,6 @@
 # ADR-002 · Colas por prioridad con BullMQ sobre Redis 7
 
-- **Estado:** aceptada · 2026-09-30 · NH-2 (SCRUM-10)
+- **Estado:** aceptada · 2026-09-30 · NH-2 (SCRUM-10) · _sustituida en parte por [ADR-007](0007-workers-nativo.md): BullMQ/Redis → Cloudflare Queues_
 
 ## Contexto
 

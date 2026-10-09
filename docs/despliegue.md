@@ -1,39 +1,36 @@
-# Despliegue en Cloudflare
+# Despliegue en Cloudflare (plan gratuito)
 
-Decisión y razones en [ADR-006](adr/0006-despliegue-cloudflare-containers.md). Diagrama:
-[07-despliegue.mmd](diagrams/07-despliegue.mmd).
+Decisión y razones en [ADR-007](adr/0007-workers-nativo.md). Diagrama: [07-despliegue.mmd](diagrams/07-despliegue.mmd).
 
 ## Qué está conectado
 
-| Pieza              | Dónde                                                            | Estado                |
-| ------------------ | ---------------------------------------------------------------- | --------------------- |
-| Código y CI        | GitHub `joseraulsoriano/notifyhub` (privado)                     | ✅ CI en verde        |
-| Imagen de la API   | GHCR `ghcr.io/joseraulsoriano/notifyhub/api:<sha>`               | ✅ la publica el CI   |
-| Worker + Container | Cloudflare, cuenta `sc202357155@alm.buap.mx`, Worker `notifyhub` | ⏳ falta Workers Paid |
-| Postgres           | Neon, proyecto `notifyhub` (`dry-hat-07081567`), `aws-us-east-1` | ✅ migrado y sembrado |
-| Redis              | Por definir (Redis Cloud free, 30 MB)                            | ⏳ falta crear        |
-| Tablero            | Jira `arquitectura-so`, historia SCRUM-50                        | En curso              |
+| Pieza           | Dónde                                                                   | Estado                |
+| --------------- | ----------------------------------------------------------------------- | --------------------- |
+| Código y CI     | GitHub `joseraulsoriano/notifyhub` (privado)                            | ✅                    |
+| Worker          | Cloudflare `sc202357155@alm.buap.mx` (Free), Worker `notifyhub-api`     | ⏳ primer deploy      |
+| Colas           | Queues `notifications-high`, `-medium`, `-low`                          | ✅ creadas            |
+| Pool a Postgres | Hyperdrive `notifyhub` (`49c31e43fadf4d10952b31c0257d8c4a`)             | ✅ creado             |
+| Rate limit      | Durable Object `RateLimiterObject` (SQLite), se crea con el deploy      | ⏳ primer deploy      |
+| Postgres        | Neon, proyecto `notifyhub` (`dry-hat-07081567`), `aws-us-east-1`, PG 18 | ✅ migrado y sembrado |
+| Tablero         | Jira `arquitectura-so`, historia SCRUM-50                               | En curso              |
 
-## Primer despliegue (local)
+Límites del plan gratuito que importan: 100,000 peticiones/día al Worker, 10,000 operaciones/día de Queues (unas
+3,300 notificaciones) y 100,000 consultas/día por Hyperdrive.
 
-Requisitos: Docker corriendo, `wrangler login` hecho y plan Workers Paid activo en la cuenta.
+## Desplegar
+
+Requisito: `wrangler login` hecho con la cuenta de arriba. No hace falta Docker ni secretos: la conexión a Neon vive
+en la configuración de Hyperdrive.
 
 ```bash
-cd apps/edge
-
-# 1. Secretos del Worker: se leen del llavero de macOS y se pasan por stdin, nunca como argumento.
-security find-generic-password -s notifyhub-database-url -a neon -w | pnpm wrangler secret put DATABASE_URL
-security find-generic-password -s notifyhub-redis-url -a prod -w   | pnpm wrangler secret put REDIS_URL
-
-# 2. Construye la imagen (amd64), la sube al registro de Cloudflare y publica el Worker.
-pnpm deploy
+pnpm install
+pnpm turbo run build --filter=@notifyhub/api...
+pnpm --filter @notifyhub/api run deploy      # imprime la URL https://notifyhub-api.<subdominio>.workers.dev
 ```
-
-El primer despliegue tarda unos minutos en aprovisionar los contenedores; mientras tanto el Worker responde 503.
 
 ## Migraciones
 
-Se aplican antes de desplegar, nunca al arrancar el contenedor:
+Se aplican antes de desplegar, desde Node (Prisma no corre en el Worker):
 
 ```bash
 DATABASE_URL="$(security find-generic-password -s notifyhub-database-url -a neon -w)" \
@@ -42,22 +39,19 @@ DATABASE_URL="$(security find-generic-password -s notifyhub-database-url -a neon
 
 ## Despliegue desde GitHub Actions
 
-El workflow [Deploy](../.github/workflows/deploy.yml) se lanza a mano (`gh workflow run deploy.yml`). Necesita estos
-secretos del repo:
+El workflow [Deploy](../.github/workflows/deploy.yml) se lanza a mano (`gh workflow run deploy.yml`) y necesita estos
+secretos del repo, en el entorno `production`:
 
-| Secreto                 | De dónde sale                                                                 |
-| ----------------------- | ----------------------------------------------------------------------------- |
-| `CLOUDFLARE_API_TOKEN`  | Token de cuenta con la plantilla "Edit Cloudflare Workers" + Containers: Edit |
-| `CLOUDFLARE_ACCOUNT_ID` | `247e74237cc1505e56c6ea6714cf0be6`                                            |
-| `DATABASE_URL`          | Neon → proyecto `notifyhub` → Connection string                               |
-
-Los secretos del Worker (`DATABASE_URL`, `REDIS_URL`) ya quedan guardados en Cloudflare tras el primer
-`wrangler secret put`; el workflow no los vuelve a subir.
+| Secreto                 | De dónde sale                                                          |
+| ----------------------- | ---------------------------------------------------------------------- |
+| `CLOUDFLARE_API_TOKEN`  | Token de cuenta con la plantilla "Edit Cloudflare Workers"             |
+| `CLOUDFLARE_ACCOUNT_ID` | `247e74237cc1505e56c6ea6714cf0be6`                                     |
+| `DATABASE_URL`          | Neon → proyecto `notifyhub` → Connection string (para las migraciones) |
 
 ## Verificación
 
 ```bash
-URL=https://notifyhub.<subdominio>.workers.dev
+URL=https://notifyhub-api.<subdominio>.workers.dev
 KEY="$(security find-generic-password -s notifyhub-api-key -a prod -w)"
 curl -s "$URL/health"
 curl -s -X POST "$URL/v1/notifications" -H "X-API-Key: $KEY" -H "Idempotency-Key: $(uuidgen)" \
@@ -65,4 +59,10 @@ curl -s -X POST "$URL/v1/notifications" -H "X-API-Key: $KEY" -H "Idempotency-Key
   -d '{"sender":{"name":"Demo"},"recipient":{"email":"demo@example.com"},"message":{"body":"hola"},"priority":"alta","preferredChannel":"EMAIL"}'
 ```
 
-La API key de producción se generó al sembrar Neon y vive solo en el llavero (`notifyhub-api-key`).
+La API key de producción se generó al sembrar Neon y vive solo en el llavero de macOS (`notifyhub-api-key`).
+
+## Local
+
+`pnpm infra:up` levanta Postgres; `pnpm dev` corre el Worker con `wrangler dev` en `http://localhost:8787`.
+Hyperdrive usa `localConnectionString` de `apps/api/wrangler.jsonc`, y Queues y el Durable Object se simulan en
+local. `tests/e2e/smoke.sh` hace lo mismo en CI.

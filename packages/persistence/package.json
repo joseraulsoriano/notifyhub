@@ -15,9 +15,11 @@
   "dependencies": {
     "@notifyhub/application": "workspace:*",
     "@notifyhub/domain": "workspace:*",
-    "@prisma/client": "^6.7.0"
+    "@prisma/client": "^6.7.0",
+    "pg": "^8.23.1"
   },
   "devDependencies": {
+    "@types/pg": "^8.23.1",
     "prisma": "^6.7.0"
   },
   "files": [

@@ -1,0 +1,41 @@
+// API de NotifyHub en Cloudflare Workers (plan gratuito). Decisión en docs/adr/0007-workers-nativo.md.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "notifyhub-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-09",
+  // `pg` y `node:crypto` (hash de API keys e idempotencia) necesitan las APIs de Node.
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+
+  // Pool de conexiones hacia Neon. En `wrangler dev` se usa el Postgres de infra/compose.yaml.
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "49c31e43fadf4d10952b31c0257d8c4a",
+      "localConnectionString": "postgresql://notifyhub:notifyhub@localhost:5432/notifyhub",
+    },
+  ],
+
+  // Una cola por prioridad (ADR-002/007). El consumidor llega con apps/dispatcher en S2.
+  "queues": {
+    "producers": [
+      { "binding": "QUEUE_HIGH", "queue": "notifications-high" },
+      { "binding": "QUEUE_MEDIUM", "queue": "notifications-medium" },
+      { "binding": "QUEUE_LOW", "queue": "notifications-low" },
+    ],
+  },
+
+  // Un Durable Object por cliente lleva su ventana de rate limit.
+  "durable_objects": {
+    "bindings": [{ "name": "RATE_LIMITER", "class_name": "RateLimiterObject" }],
+  },
+  "exports": {
+    "RateLimiterObject": { "type": "durable-object", "storage": "sqlite" },
+  },
+
+  "vars": {
+    "LOG_LEVEL": "info",
+    "RATE_LIMIT_WINDOW_SECONDS": "60",
+  },
+}

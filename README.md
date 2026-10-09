@@ -23,22 +23,22 @@ Detalle por historia en [docs/avance.md](docs/avance.md).
 
 ## Arranque rápido
 
-Requisitos: Node.js 22+, pnpm 11 y Docker.
+Requisitos: Node.js 22+, pnpm 11 y Docker (solo para Postgres local).
 
 ```bash
 pnpm install
 cp .env.example .env
-pnpm infra:up                                    # Postgres, Redis, Mailpit, WireMock, Grafana
+pnpm infra:up                                    # Postgres, Mailpit, WireMock, Grafana
 pnpm build
 pnpm --filter @notifyhub/persistence db:deploy   # migraciones
 pnpm db:seed                                     # cliente de desarrollo + proveedores
-pnpm --filter @notifyhub/api start               # http://localhost:3000
+pnpm dev                                         # wrangler dev → http://localhost:8787
 ```
 
 Enviar una notificación:
 
 ```bash
-curl -X POST localhost:3000/v1/notifications \
+curl -X POST localhost:8787/v1/notifications \
   -H 'X-API-Key: nh_dev_local_key' \
   -H 'Idempotency-Key: pedido-0001' \
   -H 'Content-Type: application/json' \
@@ -51,25 +51,27 @@ curl -X POST localhost:3000/v1/notifications \
   }'
 # → 202 {"id":"…","status":"QUEUED",…}
 
-curl localhost:3000/v1/notifications/<id> -H 'X-API-Key: nh_dev_local_key'
+curl localhost:8787/v1/notifications/<id> -H 'X-API-Key: nh_dev_local_key'
 ```
 
-El contrato completo está en [docs/api/openapi.yaml](docs/api/openapi.yaml).
+El contrato completo está en [docs/api/openapi.yaml](docs/api/openapi.yaml). La API corre en Cloudflare Workers
+(plan gratuito): Hono, Queues, Hyperdrive hacia Neon y un Durable Object para el rate limit
+([ADR-007](docs/adr/0007-workers-nativo.md)). Despliegue en [docs/despliegue.md](docs/despliegue.md).
 
 ## Estructura
 
 ```
 apps/
-  api/            HTTP: recepción (RF1), consulta de estado            ← S1
-  dispatcher/     workers BullMQ: despacho (RF2) y fallback (RF3)     ← S2–S3
-  event-relay/    outbox → Redis Streams → webhooks (RF5)             ← S4
+  api/            Worker Hono: recepción (RF1), consulta de estado     ← S1
+  dispatcher/     Worker consumidor de Queues: despacho y fallback     ← S2–S3
+  event-relay/    outbox → cola de eventos → webhooks (RF5)            ← S4
 packages/
   domain/         entidades, estados y errores; sin dependencias
   application/    casos de uso y puertos; solo depende de domain
-  persistence/    esquema Prisma, migraciones y repositorios
+  persistence/    esquema y migraciones Prisma; repositorios con pg
   shared/         configuración validada y nombres de colas
 config/routing.yaml   proveedores, estrategias y cadenas de fallback
-infra/                Docker Compose, Dockerfiles, mocks de WireMock
+infra/                Docker Compose (Postgres y herramientas), mocks de WireMock
 docs/                 ADRs, diagramas Mermaid, OpenAPI, riesgos y pruebas
 ```
 

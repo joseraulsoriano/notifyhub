@@ -1,6 +1,6 @@
 # ADR-001 · Monorepo TypeScript con NestJS y arquitectura hexagonal
 
-- **Estado:** aceptada · 2026-09-30 · NH-2 (SCRUM-10)
+- **Estado:** aceptada · 2026-09-30 · NH-2 (SCRUM-10) · _sustituida en parte por [ADR-007](0007-workers-nativo.md): NestJS → Hono en Workers_
 - **Decisores:** José Raúl Soriano, Andreea Margarita Maldonado Morales
 
 ## Contexto

@@ -1,3 +1,3 @@
-export { PrismaClient } from '../generated/client';
-export * from './prisma-client-app-repository';
-export * from './prisma-notification-repository';
+// Prisma solo define el esquema, las migraciones y el seed; en tiempo de ejecución se usa `pg` (ADR-007).
+export * from './pg-client-app-repository';
+export * from './pg-notification-repository';

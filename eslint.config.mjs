@@ -11,7 +11,7 @@ export default tseslint.config(
       '**/.turbo/**',
       '**/generated/**',
       '**/.wrangler/**',
-      'apps/edge/worker-configuration.d.ts',
+      'apps/api/worker-configuration.d.ts',
     ],
   },
   js.configs.recommended,
@@ -29,7 +29,7 @@ export default tseslint.config(
     rules: {
       'no-restricted-imports': [
         'error',
-        { patterns: ['@notifyhub/*', '@nestjs/*', '@prisma/*', 'bullmq', 'ioredis', 'zod'] },
+        { patterns: ['@notifyhub/*', '@prisma/*', 'pg', 'hono', 'hono/*', 'cloudflare:*', 'zod'] },
       ],
     },
   },
@@ -42,10 +42,11 @@ export default tseslint.config(
           patterns: [
             '@notifyhub/persistence',
             '@notifyhub/shared',
-            '@nestjs/*',
             '@prisma/*',
-            'bullmq',
-            'ioredis',
+            'pg',
+            'hono',
+            'hono/*',
+            'cloudflare:*',
           ],
         },
       ],

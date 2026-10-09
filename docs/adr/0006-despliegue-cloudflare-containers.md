@@ -1,6 +1,6 @@
 # ADR-006 · Despliegue en Cloudflare Containers
 
-- **Estado:** aceptada · 2026-10-09 · SCRUM-50
+- **Estado:** _sustituida por [ADR-007](0007-workers-nativo.md)_ · 2026-10-09 · SCRUM-50 · nunca se desplegó: Containers exige Workers Paid
 
 ## Contexto
 

@@ -1,6 +1,6 @@
 # ADR-004 · Eventos con Observer, outbox transaccional y Redis Streams
 
-- **Estado:** aceptada · 2026-10-01 · NH-2 (SCRUM-10)
+- **Estado:** aceptada · 2026-10-01 · NH-2 (SCRUM-10) · _sustituida en parte por [ADR-007](0007-workers-nativo.md): Redis Streams → Queues_
 
 ## Contexto
 

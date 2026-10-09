@@ -3,15 +3,13 @@ import { loadConfig } from './config';
 
 describe('loadConfig', () => {
   it('aplica valores por defecto', () => {
-    const config = loadConfig({
-      DATABASE_URL: 'postgresql://u:p@localhost:5432/db',
-      REDIS_URL: 'redis://localhost:6379',
-    });
-    expect(config.PORT).toBe(3000);
+    const config = loadConfig({});
+    expect(config.LOG_LEVEL).toBe('info');
     expect(config.RATE_LIMIT_WINDOW_SECONDS).toBe(60);
   });
 
-  it('falla con un mensaje claro si falta una variable', () => {
-    expect(() => loadConfig({ REDIS_URL: 'redis://localhost:6379' })).toThrow(/DATABASE_URL/);
+  it('convierte los textos de wrangler.jsonc y falla con un mensaje claro si un valor no sirve', () => {
+    expect(loadConfig({ RATE_LIMIT_WINDOW_SECONDS: '30' }).RATE_LIMIT_WINDOW_SECONDS).toBe(30);
+    expect(() => loadConfig({ RATE_LIMIT_WINDOW_SECONDS: 'cero' })).toThrow(/RATE_LIMIT_WINDOW_SECONDS/);
   });
 });
