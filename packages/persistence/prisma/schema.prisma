@@ -1,0 +1,196 @@
+// Modelo de persistencia de NotifyHub. Fuente: docs/diagrams/04-er.mmd
+
+generator client {
+  provider = "prisma-client-js"
+  // Dentro del paquete para que viaje con él a la imagen Docker (pnpm deploy).
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Priority {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum Channel {
+  EMAIL
+  SMS
+  PUSH
+  WEBHOOK
+}
+
+enum NotificationStatus {
+  RECEIVED
+  QUEUED
+  SENDING
+  RETRYING
+  FALLBACK
+  SENT
+  DELIVERED
+  FAILED
+}
+
+enum AttemptStatus {
+  SENT
+  FAILED
+  RETRYING
+}
+
+enum ProviderHealth {
+  UP
+  DEGRADED
+  DOWN
+}
+
+model ClientApp {
+  id              String         @id @default(uuid()) @db.Uuid
+  name            String
+  apiKeyHash      String         @unique @map("api_key_hash")
+  rateLimitPerMin Int            @default(600) @map("rate_limit_per_min")
+  active          Boolean        @default(true)
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  notifications   Notification[]
+
+  @@map("client_app")
+}
+
+model Notification {
+  id               String             @id @db.Uuid
+  clientAppId      String             @map("client_app_id") @db.Uuid
+  idempotencyKey   String?            @map("idempotency_key")
+  requestHash      String             @map("request_hash")
+  sender           Json
+  recipient        Json
+  message          Json
+  priority         Priority
+  preferredChannel Channel            @map("preferred_channel")
+  status           NotificationStatus
+  createdAt        DateTime           @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  clientApp    ClientApp         @relation(fields: [clientAppId], references: [id])
+  attempts     DeliveryAttempt[]
+  auditLog     AuditLog[]
+  outboxEvents OutboxEvent[]
+
+  @@unique([clientAppId, idempotencyKey])
+  @@index([status, createdAt])
+  @@map("notification")
+}
+
+model Provider {
+  id               String          @id @default(uuid()) @db.Uuid
+  code             String          @unique
+  channel          Channel
+  costPerMessage   Decimal         @map("cost_per_message") @db.Decimal(10, 5)
+  reliabilityScore Int             @map("reliability_score")
+  health           ProviderHealth  @default(UP)
+  enabled          Boolean         @default(true)
+  attempts         DeliveryAttempt[]
+  routingRules     RoutingRule[]
+
+  @@map("provider")
+}
+
+model RoutingRule {
+  id              String   @id @default(uuid()) @db.Uuid
+  priority        Priority
+  channel         Channel
+  providerId      String   @map("provider_id") @db.Uuid
+  rank            Int
+  fallbackChannel Channel? @map("fallback_channel")
+  provider        Provider @relation(fields: [providerId], references: [id])
+
+  @@unique([priority, channel, rank])
+  @@map("routing_rule")
+}
+
+model DeliveryAttempt {
+  id                String        @id @default(uuid()) @db.Uuid
+  notificationId    String        @map("notification_id") @db.Uuid
+  providerId        String        @map("provider_id") @db.Uuid
+  channel           Channel
+  attemptNumber     Int           @map("attempt_number")
+  isFallback        Boolean       @default(false) @map("is_fallback")
+  status            AttemptStatus
+  providerMessageId String?       @map("provider_message_id")
+  providerResponse  Json?         @map("provider_response")
+  errorCode         String?       @map("error_code")
+  latencyMs         Int?          @map("latency_ms")
+  attemptedAt       DateTime      @default(now()) @map("attempted_at") @db.Timestamptz(3)
+
+  notification Notification @relation(fields: [notificationId], references: [id])
+  provider     Provider     @relation(fields: [providerId], references: [id])
+  auditLog     AuditLog[]
+
+  @@index([notificationId, attemptNumber])
+  @@map("delivery_attempt")
+}
+
+/// Bitácora append-only (RF4). El particionado mensual y el bloqueo de UPDATE/DELETE llegan en NH-30.
+model AuditLog {
+  id             BigInt              @id @default(autoincrement())
+  notificationId String              @map("notification_id") @db.Uuid
+  attemptId      String?             @map("attempt_id") @db.Uuid
+  eventType      String              @map("event_type")
+  fromStatus     NotificationStatus? @map("from_status")
+  toStatus       NotificationStatus  @map("to_status")
+  channel        Channel?
+  providerCode   String?             @map("provider_code")
+  detail         Json?
+  occurredAt     DateTime            @default(now()) @map("occurred_at") @db.Timestamptz(3)
+
+  notification Notification     @relation(fields: [notificationId], references: [id])
+  attempt      DeliveryAttempt? @relation(fields: [attemptId], references: [id])
+
+  @@index([notificationId, occurredAt])
+  @@index([occurredAt])
+  @@map("audit_log")
+}
+
+model OutboxEvent {
+  id             String    @id @default(uuid()) @db.Uuid
+  notificationId String    @map("notification_id") @db.Uuid
+  eventType      String    @map("event_type")
+  payload        Json
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  publishedAt    DateTime? @map("published_at") @db.Timestamptz(3)
+
+  notification Notification           @relation(fields: [notificationId], references: [id])
+  deliveries   SubscriptionDelivery[]
+
+  @@index([publishedAt, createdAt])
+  @@map("outbox_event")
+}
+
+model Subscription {
+  id             String                 @id @default(uuid()) @db.Uuid
+  subscriberName String                 @map("subscriber_name")
+  targetUrl      String                 @map("target_url")
+  eventTypes     String[]               @map("event_types")
+  secretHash     String                 @map("secret_hash")
+  active         Boolean                @default(true)
+  deliveries     SubscriptionDelivery[]
+
+  @@map("subscription")
+}
+
+model SubscriptionDelivery {
+  id             String    @id @default(uuid()) @db.Uuid
+  subscriptionId String    @map("subscription_id") @db.Uuid
+  outboxEventId  String    @map("outbox_event_id") @db.Uuid
+  status         String
+  attempts       Int       @default(0)
+  lastAttemptAt  DateTime? @map("last_attempt_at") @db.Timestamptz(3)
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id])
+  outboxEvent  OutboxEvent  @relation(fields: [outboxEventId], references: [id])
+
+  @@unique([subscriptionId, outboxEventId])
+  @@map("subscription_delivery")
+}
