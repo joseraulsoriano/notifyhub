@@ -6,7 +6,7 @@ Decisión y razones en [ADR-007](adr/0007-workers-nativo.md). Diagrama: [07-desp
 
 | Pieza           | Dónde                                                                      | Estado                |
 | --------------- | -------------------------------------------------------------------------- | --------------------- |
-| Código y CI     | GitHub `joseraulsoriano/notifyhub` (privado)                               | ✅                    |
+| Código y CI     | GitHub `joseraulsoriano/notifyhub` (público)                               | ✅                    |
 | Worker          | tu cuenta de Cloudflare (plan gratuito), Worker `notifyhub-api`            | ⏳ primer deploy      |
 | Colas           | Queues `notifications-high`, `-medium`, `-low`                             | ✅ creadas            |
 | Pool a Postgres | Hyperdrive `notifyhub` (su id va en `wrangler.jsonc`; usa el de tu cuenta) | ✅ creado             |
