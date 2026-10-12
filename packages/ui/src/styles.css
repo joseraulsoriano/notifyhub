@@ -1,0 +1,111 @@
+/*
+ * Tokens de diseño de NotifyHub (ver DESIGN.md): papel y tinta, una línea de color por canal y el naranja
+ * reservado al transbordo (fallback). Define los nombres semánticos que usan los componentes y shadcn/ui.
+ *
+ * Uso con Tailwind v4, en el CSS de tu aplicación:
+ *   @import "tailwindcss";
+ *   @import "@notifyhub/ui/styles.css";
+ *   @source "../node_modules/@notifyhub/ui/dist";
+ *
+ * Tipografías (cárgalas en tu <head>): Cabinet Grotesk, General Sans y JetBrains Mono.
+ */
+/* Identidad NotifyHub (ver DESIGN.md): papel y tinta, una línea de color por canal y el naranja sólo en el transbordo. */
+@theme inline {
+  --font-sans: 'General Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-heading: 'Cabinet Grotesk', 'General Sans', ui-sans-serif, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  --color-ink-3: var(--ink-3);
+  --color-transfer: var(--transfer);
+  --color-transfer-ink: var(--transfer-ink);
+  --color-line-email: var(--line-email);
+  --color-line-sms: var(--line-sms);
+  --color-line-push: var(--line-push);
+  --color-line-webhook: var(--line-webhook);
+  --color-success: var(--success);
+  --color-running: var(--running);
+  --color-paper-2: var(--surface-2);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: #f3f2ed;
+  --foreground: #12151a;
+  --card: #ffffff;
+  --card-foreground: #12151a;
+  --popover: #ffffff;
+  --popover-foreground: #12151a;
+  --primary: #12151a;
+  --primary-foreground: #f3f2ed;
+  --secondary: #eceae3;
+  --secondary-foreground: #12151a;
+  --muted: #eceae3;
+  --muted-foreground: #4a4f57;
+  --accent: #eceae3;
+  --accent-foreground: #12151a;
+  --destructive: #b3122e;
+  --border: #d9d6cc;
+  --input: #d9d6cc;
+  --ring: #ff5a1f;
+  --chart-1: #1b5fe0;
+  --chart-2: #0e9f8e;
+  --chart-3: #d9a300;
+  --chart-4: #c2338a;
+  --chart-5: #b3122e;
+  --radius: 0.5rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #4a4f57;
+  --sidebar-primary: #12151a;
+  --sidebar-primary-foreground: #f3f2ed;
+  --sidebar-accent: #eceae3;
+  --sidebar-accent-foreground: #12151a;
+  --sidebar-border: #d9d6cc;
+  --sidebar-ring: #ff5a1f;
+  /* marca */
+  --ink-3: #7a7f87;
+  --surface-2: #eceae3;
+  --transfer: #ff5a1f;
+  --transfer-ink: #b93a0a;
+  --line-email: #1b5fe0;
+  --line-sms: #0e9f8e;
+  --line-push: #d9a300;
+  --line-webhook: #c2338a;
+  --success: #137a4b;
+  --running: #1b5fe0;
+}
