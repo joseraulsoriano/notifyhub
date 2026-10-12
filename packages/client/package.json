@@ -27,5 +27,30 @@
   "devDependencies": {
     "tsup": "^8.5.0",
     "typescript": "~5.8.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joseraulsoriano/notifyhub.git",
+    "directory": "packages/client"
+  },
+  "homepage": "https://github.com/joseraulsoriano/notifyhub#readme",
+  "bugs": {
+    "url": "https://github.com/joseraulsoriano/notifyhub/issues"
+  },
+  "keywords": [
+    "notifications",
+    "multichannel",
+    "fallback",
+    "email",
+    "sms",
+    "push",
+    "webhook",
+    "cloudflare-workers",
+    "sdk",
+    "typescript"
+  ],
+  "author": "José Raúl Soriano Cazabal y Andreea Margarita Maldonado Morales",
+  "publishConfig": {
+    "access": "public"
   }
 }

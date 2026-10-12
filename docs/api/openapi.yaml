@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: NotifyHub API
   version: 0.1.0
-  license: { name: Uso académico }
+  license: { name: MIT, identifier: MIT }
   summary: Servicio de Notificaciones y Registro Multicanal
   description: |
     Recibe solicitudes de notificación (RF1), las despacha de forma asíncrona por el proveedor adecuado

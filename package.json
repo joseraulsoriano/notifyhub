@@ -38,5 +38,10 @@
   },
   "lint-staged": {
     "*.{ts,js,mjs,json,md,yaml,yml}": "prettier --write"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joseraulsoriano/notifyhub.git"
   }
 }

@@ -4,15 +4,15 @@ Decisión y razones en [ADR-007](adr/0007-workers-nativo.md). Diagrama: [07-desp
 
 ## Qué está conectado
 
-| Pieza           | Dónde                                                                   | Estado                |
-| --------------- | ----------------------------------------------------------------------- | --------------------- |
-| Código y CI     | GitHub `joseraulsoriano/notifyhub` (privado)                            | ✅                    |
-| Worker          | Cloudflare `sc202357155@alm.buap.mx` (Free), Worker `notifyhub-api`     | ⏳ primer deploy      |
-| Colas           | Queues `notifications-high`, `-medium`, `-low`                          | ✅ creadas            |
-| Pool a Postgres | Hyperdrive `notifyhub` (`49c31e43fadf4d10952b31c0257d8c4a`)             | ✅ creado             |
-| Rate limit      | Durable Object `RateLimiterObject` (SQLite), se crea con el deploy      | ⏳ primer deploy      |
-| Postgres        | Neon, proyecto `notifyhub` (`dry-hat-07081567`), `aws-us-east-1`, PG 18 | ✅ migrado y sembrado |
-| Tablero         | Jira `arquitectura-so`, historia SCRUM-50                               | En curso              |
+| Pieza           | Dónde                                                                      | Estado                |
+| --------------- | -------------------------------------------------------------------------- | --------------------- |
+| Código y CI     | GitHub `joseraulsoriano/notifyhub` (privado)                               | ✅                    |
+| Worker          | tu cuenta de Cloudflare (plan gratuito), Worker `notifyhub-api`            | ⏳ primer deploy      |
+| Colas           | Queues `notifications-high`, `-medium`, `-low`                             | ✅ creadas            |
+| Pool a Postgres | Hyperdrive `notifyhub` (su id va en `wrangler.jsonc`; usa el de tu cuenta) | ✅ creado             |
+| Rate limit      | Durable Object `RateLimiterObject` (SQLite), se crea con el deploy         | ⏳ primer deploy      |
+| Postgres        | Neon, proyecto `notifyhub`, `aws-us-east-1`, PG 18                         | ✅ migrado y sembrado |
+| Tablero         | Jira `arquitectura-so`, historia SCRUM-50                                  | En curso              |
 
 Límites del plan gratuito que importan: 100,000 peticiones/día al Worker, 10,000 operaciones/día de Queues (unas
 3,300 notificaciones) y 100,000 consultas/día por Hyperdrive.
@@ -80,7 +80,7 @@ secretos del repo, en el entorno `production`:
 | Secreto                 | De dónde sale                                                          |
 | ----------------------- | ---------------------------------------------------------------------- |
 | `CLOUDFLARE_API_TOKEN`  | Token de cuenta con la plantilla "Edit Cloudflare Workers"             |
-| `CLOUDFLARE_ACCOUNT_ID` | `247e74237cc1505e56c6ea6714cf0be6`                                     |
+| `CLOUDFLARE_ACCOUNT_ID` | El id de tu cuenta (panel de Cloudflare → Workers)                     |
 | `DATABASE_URL`          | Neon → proyecto `notifyhub` → Connection string (para las migraciones) |
 
 ## Verificación
