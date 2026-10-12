@@ -12,6 +12,7 @@ import {
 } from '@notifyhub/application';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app';
+import { providerAndAuditDeps } from './support';
 
 const KEY = 'nh_test_key_123';
 const OTHER_KEY = 'nh_other_key_456';
@@ -63,12 +64,13 @@ describe('GET /v1/notifications', () => {
     const repository = new InMemoryNotificationRepository();
     clock = new FixedClock();
     const deps = {
-      config: { RATE_LIMIT_WINDOW_SECONDS: 60 },
+      config: { RATE_LIMIT_WINDOW_SECONDS: 60, PROVIDER_ADMIN_CLIENTS: '' },
       clients,
       limiter: new InMemoryRateLimiter(),
       accept: new AcceptNotification(repository, new InMemoryNotificationQueue(), clock, new SequentialIds()),
       getStatus: new GetNotificationStatus(repository),
       list: new ListNotifications(repository),
+      ...providerAndAuditDeps(),
     };
     app = createApp(async () => ({ deps }));
   });

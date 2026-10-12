@@ -46,3 +46,11 @@ export class ProviderNotRegisteredError extends DomainError {
     super(`No hay un SenderCreator registrado para el proveedor "${providerCode}"`);
   }
 }
+
+export class ProviderNotFoundError extends DomainError {
+  readonly code = 'PROVIDER_NOT_FOUND';
+
+  constructor(providerCode: string) {
+    super(`No existe el proveedor ${providerCode}`);
+  }
+}

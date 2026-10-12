@@ -1,5 +1,17 @@
-import { AcceptNotification, GetNotificationStatus, ListNotifications } from '@notifyhub/application';
-import { PgClientAppRepository, PgNotificationRepository } from '@notifyhub/persistence';
+import {
+  AcceptNotification,
+  GetNotificationStatus,
+  ListAuditLog,
+  ListNotifications,
+  ListProviders,
+  UpdateProvider,
+} from '@notifyhub/application';
+import {
+  PgAuditLogRepository,
+  PgClientAppRepository,
+  PgNotificationRepository,
+  PgProviderRepository,
+} from '@notifyhub/persistence';
 import { loadConfig } from '@notifyhub/shared';
 import { Client } from 'pg';
 import { createApp } from './app';
@@ -16,6 +28,7 @@ export default createApp<Env>(async (c) => {
   await db.connect();
 
   const notifications = new PgNotificationRepository(db);
+  const providers = new PgProviderRepository(db);
   const queue = new QueuesNotificationQueue({
     HIGH: env.QUEUE_HIGH,
     MEDIUM: env.QUEUE_MEDIUM,
@@ -32,6 +45,9 @@ export default createApp<Env>(async (c) => {
       accept: new AcceptNotification(notifications, queue, clock, ids),
       getStatus: new GetNotificationStatus(notifications),
       list: new ListNotifications(notifications),
+      providers: new ListProviders(providers),
+      updateProvider: new UpdateProvider(providers),
+      audit: new ListAuditLog(new PgAuditLogRepository(db)),
     },
     close: () => db.end(),
   };

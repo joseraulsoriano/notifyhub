@@ -3,6 +3,7 @@ import {
   IdempotencyConflictError,
   InvalidCursorError,
   NotificationNotFoundError,
+  ProviderNotFoundError,
 } from '@notifyhub/domain';
 import { HTTPException } from 'hono/http-exception';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
@@ -20,11 +21,13 @@ const DOMAIN_STATUS: [new (...args: never[]) => DomainError, ContentfulStatusCod
   [NotificationNotFoundError, 404],
   [IdempotencyConflictError, 409],
   [InvalidCursorError, 400],
+  [ProviderNotFoundError, 404],
 ];
 
 const STATUS_TITLE: Partial<Record<number, string>> = {
   400: 'BAD_REQUEST',
   401: 'UNAUTHORIZED',
+  403: 'FORBIDDEN',
   404: 'NOT_FOUND',
   429: 'TOO_MANY_REQUESTS',
 };

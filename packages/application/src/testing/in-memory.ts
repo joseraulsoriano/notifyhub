@@ -7,6 +7,10 @@ import type {
 } from '@notifyhub/domain';
 import { assertTransition } from '@notifyhub/domain';
 import type {
+  AuditEntry,
+  AuditLogFilter,
+  AuditLogRepository,
+  AuditPage,
   ClientApp,
   ClientAppRepository,
   Clock,
@@ -244,3 +248,45 @@ export const DEFAULT_PROVIDERS: Provider[] = [
     enabled: true,
   },
 ];
+
+/** Bitácora en memoria para pruebas: se llena con `add` y se filtra como la de Postgres. */
+export class InMemoryAuditLogRepository implements AuditLogRepository {
+  /** Entradas con el cliente dueño de la notificación. */
+  private readonly entries: { clientAppId: string; entry: AuditEntry }[] = [];
+
+  add(clientAppId: string, entry: AuditEntry) {
+    this.entries.push({ clientAppId, entry });
+  }
+
+  async list(
+    clientAppId: string,
+    filter: AuditLogFilter,
+    page: { limit: number; cursor?: ListCursor },
+  ): Promise<AuditPage> {
+    const { cursor } = page;
+    const sorted = this.entries
+      .filter((e) => e.clientAppId === clientAppId)
+      .map((e) => e.entry)
+      .filter((e) => !filter.notificationId || e.notificationId === filter.notificationId)
+      .filter((e) => !filter.eventType || e.eventType === filter.eventType)
+      .filter((e) => !filter.channel || e.channel === filter.channel)
+      .filter((e) => !filter.provider || e.providerCode === filter.provider)
+      .filter((e) => !filter.status || e.detail?.status === filter.status)
+      .filter((e) => !filter.from || e.occurredAt >= filter.from)
+      .filter((e) => !filter.to || e.occurredAt <= filter.to)
+      .sort((a, b) => b.occurredAt.getTime() - a.occurredAt.getTime() || Number(b.id) - Number(a.id));
+    const after = cursor
+      ? sorted.filter(
+          (e) =>
+            e.occurredAt.getTime() < cursor.createdAt.getTime() ||
+            (e.occurredAt.getTime() === cursor.createdAt.getTime() && Number(e.id) < Number(cursor.id)),
+        )
+      : sorted;
+    const slice = after.slice(0, page.limit);
+    const last = slice.at(-1);
+    return {
+      items: slice,
+      next: after.length > page.limit && last ? { createdAt: last.occurredAt, id: last.id } : null,
+    };
+  }
+}

@@ -8,6 +8,11 @@ const ConfigSchema = z.object({
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   /** Límite por defecto para clientes sin rate_limit_per_min propio. */
   RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
+  /**
+   * Quién puede cambiar la salud de los proveedores (afecta a todos los clientes): lista separada por comas de
+   * ids o nombres de client_app, o `*` para cualquiera. Vacío = nadie (403).
+   */
+  PROVIDER_ADMIN_CLIENTS: z.string().default(''),
 });
 
 export type AppConfig = z.infer<typeof ConfigSchema>;

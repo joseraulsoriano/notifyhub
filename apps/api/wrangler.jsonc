@@ -37,6 +37,8 @@
   "vars": {
     "LOG_LEVEL": "info",
     "RATE_LIMIT_WINDOW_SECONDS": "60",
+    // Clientes que pueden cambiar la salud de los proveedores: ids o nombres separados por comas, o "*". Vacío = nadie.
+    "PROVIDER_ADMIN_CLIENTS": "",
     // Orígenes de consolas web permitidos (separados por comas). Ver docs/despliegue.md.
     "CORS_ALLOWED_ORIGINS": "http://localhost:4321,http://localhost:4322",
   },

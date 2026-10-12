@@ -1,4 +1,11 @@
-import { CHANNELS, NOTIFICATION_STATUSES, PRIORITIES, RECIPIENT_FIELD_BY_CHANNEL } from '@notifyhub/domain';
+import {
+  ATTEMPT_STATUSES,
+  CHANNELS,
+  NOTIFICATION_STATUSES,
+  PRIORITIES,
+  PROVIDER_HEALTHS,
+  RECIPIENT_FIELD_BY_CHANNEL,
+} from '@notifyhub/domain';
 import { z } from 'zod';
 
 /** Acepta "alta", "media", "baja" además de HIGH, MEDIUM, LOW (RF1 está redactado en español). */
@@ -72,3 +79,31 @@ export const ListNotificationsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
   cursor: z.string().min(1).max(200).optional(),
 });
+
+/** GET /v1/audit-log */
+export const ListAuditLogQuerySchema = z.object({
+  notificationId: z.string().uuid().optional(),
+  eventType: z.string().min(1).max(60).optional(),
+  channel: Channel.optional(),
+  provider: z.string().min(1).max(40).optional(),
+  status: z
+    .preprocess((v) => (typeof v === 'string' ? v.toUpperCase() : v), z.enum(ATTEMPT_STATUSES))
+    .optional(),
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+  cursor: z.string().min(1).max(200).optional(),
+});
+
+/** PATCH /v1/providers/{code}: al menos un campo. */
+export const UpdateProviderSchema = z
+  .object({
+    health: z
+      .preprocess((v) => (typeof v === 'string' ? v.toUpperCase() : v), z.enum(PROVIDER_HEALTHS))
+      .optional(),
+    enabled: z.boolean().optional(),
+  })
+  .strict()
+  .refine((v) => v.health !== undefined || v.enabled !== undefined, 'indica health o enabled');
+
+export const ProviderCodeSchema = z.string().regex(/^[a-z][a-z0-9_-]{1,39}$/, 'código de proveedor inválido');

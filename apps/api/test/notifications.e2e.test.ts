@@ -12,6 +12,7 @@ import {
 } from '@notifyhub/application';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app';
+import { providerAndAuditDeps } from './support';
 
 const API_KEY = 'nh_test_key_123';
 const OTHER_KEY = 'nh_other_key_456';
@@ -35,12 +36,13 @@ describe('API /v1/notifications', () => {
     clients.add(hashApiKey(OTHER_KEY), { id: 'app-2', name: 'Otra app', rateLimitPerMin: 5, active: true });
     const repository = new InMemoryNotificationRepository();
     const deps = {
-      config: { RATE_LIMIT_WINDOW_SECONDS: 60 },
+      config: { RATE_LIMIT_WINDOW_SECONDS: 60, PROVIDER_ADMIN_CLIENTS: '' },
       clients,
       limiter: new InMemoryRateLimiter(),
       accept: new AcceptNotification(repository, queue, new FixedClock(), new SequentialIds()),
       getStatus: new GetNotificationStatus(repository),
       list: new ListNotifications(repository),
+      ...providerAndAuditDeps(),
     };
     app = createApp(async () => ({ deps }));
   });

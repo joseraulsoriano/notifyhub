@@ -3,8 +3,11 @@ import type {
   ClientApp,
   ClientAppRepository,
   GetNotificationStatus,
+  ListAuditLog,
   ListNotifications,
+  ListProviders,
   RateLimiter,
+  UpdateProvider,
 } from '@notifyhub/application';
 import { hashApiKey } from '@notifyhub/application';
 import type { AppConfig } from '@notifyhub/shared';
@@ -12,23 +15,29 @@ import type { Context } from 'hono';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { HTTPException } from 'hono/http-exception';
-import { detail, listItem, summary } from './http/presenters';
+import { auditEntry, detail, listItem, providerView, summary } from './http/presenters';
 import { httpProblem, toProblem } from './http/problem';
 import {
   CreateNotificationSchema,
   IdempotencyKeySchema,
+  ListAuditLogQuerySchema,
   ListNotificationsQuerySchema,
   NotificationIdSchema,
+  ProviderCodeSchema,
+  UpdateProviderSchema,
 } from './http/schemas';
 
 /** Lo que necesita la capa HTTP. Los casos de uso no conocen Hono ni Cloudflare. */
 export interface ApiDeps {
-  config: Pick<AppConfig, 'RATE_LIMIT_WINDOW_SECONDS'>;
+  config: Pick<AppConfig, 'RATE_LIMIT_WINDOW_SECONDS' | 'PROVIDER_ADMIN_CLIENTS'>;
   clients: ClientAppRepository;
   limiter: RateLimiter;
   accept: AcceptNotification;
   getStatus: GetNotificationStatus;
   list: ListNotifications;
+  providers: ListProviders;
+  updateProvider: UpdateProvider;
+  audit: ListAuditLog;
 }
 
 export interface OpenedDeps {
@@ -157,6 +166,43 @@ export function createApp<B extends object = object>(open: (c: Context<AppEnv<B>
   v1.get('/notifications/:id', async (c) => {
     const id = NotificationIdSchema.parse(c.req.param('id'));
     return c.json(detail(await c.var.deps.getStatus.execute(id, c.var.clientApp.id)));
+  });
+
+  /** SCRUM-55: catálogo de proveedores con su salud, para la consola. */
+  v1.get('/providers', async (c) => {
+    const items = await c.var.deps.providers.execute();
+    return c.json({ items: items.map(providerView) });
+  });
+
+  /**
+   * SCRUM-55: cambia la salud o el estado de un proveedor. Es global (afecta a todos los clientes), así que solo
+   * lo permiten los clientes de `PROVIDER_ADMIN_CLIENTS`; con la variable vacía responde 403.
+   */
+  v1.patch('/providers/:code', async (c) => {
+    const { clientApp, deps } = c.var;
+    const admins = deps.config.PROVIDER_ADMIN_CLIENTS.split(',')
+      .map((a) => a.trim())
+      .filter(Boolean);
+    if (!(admins.includes('*') || admins.includes(clientApp.id) || admins.includes(clientApp.name))) {
+      throw new HTTPException(403, { message: 'Este cliente no puede modificar proveedores' });
+    }
+    const code = ProviderCodeSchema.parse(c.req.param('code'));
+    const body: unknown = await c.req.json().catch(() => {
+      throw new HTTPException(400, { message: 'El cuerpo debe ser JSON válido' });
+    });
+    const { health, enabled } = UpdateProviderSchema.parse(body);
+    const updated = await deps.updateProvider.execute(code, {
+      ...(health ? { health } : {}),
+      ...(enabled !== undefined ? { enabled } : {}),
+    });
+    return c.json(providerView(updated));
+  });
+
+  /** RF4 (SCRUM-55): bitácora de auditoría del cliente, con filtros y paginación por cursor. */
+  v1.get('/audit-log', async (c) => {
+    const { limit, cursor, ...filter } = ListAuditLogQuerySchema.parse(c.req.query());
+    const page = await c.var.deps.audit.execute({ clientAppId: c.var.clientApp.id, filter, limit, cursor });
+    return c.json({ items: page.items.map(auditEntry), nextCursor: page.nextCursor });
   });
 
   app.route('/v1', v1);

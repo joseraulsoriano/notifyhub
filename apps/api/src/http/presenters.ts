@@ -1,5 +1,5 @@
-import type { NotificationDetail, NotificationListItem } from '@notifyhub/application';
-import type { NotificationRequest } from '@notifyhub/domain';
+import type { AuditEntry, NotificationDetail, NotificationListItem } from '@notifyhub/application';
+import type { NotificationRequest, Provider } from '@notifyhub/domain';
 import { maskRecipient } from './mask';
 
 export function summary(n: NotificationRequest) {
@@ -52,5 +52,30 @@ export function listItem({
     usedFallback,
     finalChannel,
     totalLatencyMs,
+  };
+}
+
+export function providerView(p: Provider) {
+  return {
+    code: p.code,
+    channel: p.channel,
+    costPerMessage: p.costPerMessage,
+    reliabilityScore: p.reliabilityScore,
+    health: p.health,
+    enabled: p.enabled,
+  };
+}
+
+export function auditEntry(e: AuditEntry) {
+  return {
+    id: e.id,
+    notificationId: e.notificationId,
+    eventType: e.eventType,
+    fromStatus: e.fromStatus,
+    toStatus: e.toStatus,
+    channel: e.channel,
+    providerCode: e.providerCode,
+    detail: e.detail,
+    occurredAt: e.occurredAt.toISOString(),
   };
 }

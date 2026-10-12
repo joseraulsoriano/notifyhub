@@ -143,12 +143,72 @@ paths:
               schema: { $ref: '#/components/schemas/Problem' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
 
+  /v1/providers:
+    get:
+      tags: [Proveedores]
+      operationId: listProviders
+      summary: Catálogo de proveedores y su salud (SCRUM-55)
+      responses:
+        '200':
+          description: Proveedores de los cuatro canales
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Provider' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/providers/{code}:
+    patch:
+      tags: [Proveedores]
+      operationId: updateProvider
+      summary: Cambiar la salud o el estado de un proveedor (SCRUM-55)
+      description: |
+        Afecta a **todos** los clientes, por eso solo lo pueden hacer los clientes listados en
+        `PROVIDER_ADMIN_CLIENTS` del Worker (ids o nombres, o `*` en entornos de demostración). Con la variable
+        vacía responde `403`. Con la salud en `DOWN` el despachador falla ese proveedor y hace fallback.
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string, examples: [fcm] } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              additionalProperties: false
+              properties:
+                health: { $ref: '#/components/schemas/ProviderHealth' }
+                enabled: { type: boolean }
+      responses:
+        '200':
+          description: Proveedor actualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Provider' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: El cliente no puede modificar proveedores
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '404':
+          description: No existe el proveedor
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
   /v1/audit-log:
     get:
       tags: [Bitácora]
       operationId: listAuditLog
-      summary: Consultar la bitácora de auditoría (RF4) — planeado para el Sprint 4 (NH-33)
+      summary: Consultar la bitácora de auditoría (RF4, SCRUM-55)
       parameters:
+        - { name: notificationId, in: query, schema: { type: string, format: uuid } }
+        - { name: eventType, in: query, schema: { type: string, examples: [delivery.attempt] } }
         - { name: from, in: query, schema: { type: string, format: date-time } }
         - { name: to, in: query, schema: { type: string, format: date-time } }
         - { name: channel, in: query, schema: { $ref: '#/components/schemas/Channel' } }
@@ -351,6 +411,21 @@ components:
         errorCode: { type: [string, 'null'] }
         latencyMs: { type: [integer, 'null'] }
         attemptedAt: { type: string, format: date-time }
+
+    ProviderHealth:
+      type: string
+      enum: [UP, DEGRADED, DOWN]
+
+    Provider:
+      type: object
+      required: [code, channel, costPerMessage, reliabilityScore, health, enabled]
+      properties:
+        code: { type: string, examples: [sendgrid, twilio, fcm, webhook] }
+        channel: { $ref: '#/components/schemas/Channel' }
+        costPerMessage: { type: number }
+        reliabilityScore: { type: integer, minimum: 0, maximum: 100 }
+        health: { $ref: '#/components/schemas/ProviderHealth' }
+        enabled: { type: boolean }
 
     AuditEntry:
       type: object
