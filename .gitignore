@@ -10,3 +10,4 @@ packages/persistence/generated
 *.log
 .wrangler
 .dev.vars*
+.gstack/

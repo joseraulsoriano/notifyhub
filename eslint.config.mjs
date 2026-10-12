@@ -11,6 +11,8 @@ export default tseslint.config(
       '**/.turbo/**',
       '**/generated/**',
       '**/.wrangler/**',
+      '**/.astro/**',
+      '**/.gstack/**',
       'apps/api/worker-configuration.d.ts',
       'apps/dispatcher/worker-configuration.d.ts',
     ],

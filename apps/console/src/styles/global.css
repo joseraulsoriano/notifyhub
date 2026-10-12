@@ -1,0 +1,23 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+/* Tokens de diseño de NotifyHub (colores, radios, tipografías). Ver DESIGN.md. */
+@import '@notifyhub/ui/styles.css';
+/* Tailwind debe ver las clases de los componentes de la librería. */
+@source '../../../../packages/ui/src';
+
+@layer base {
+  html {
+    font-size: 14px;
+  }
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: 'tnum';
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--transfer) 30%, transparent);
+  }
+}

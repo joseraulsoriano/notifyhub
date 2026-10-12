@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from './lib/cn';
-import { CHANNEL_LABEL, PRIORITY_LABEL, STATUS_LABEL } from './labels';
+import { CHANNEL_LABEL, HEALTH_LABEL, PRIORITY_LABEL, STATUS_LABEL } from './labels';
 
 type Tone = 'success' | 'error' | 'running' | 'warn' | 'transfer' | 'neutral';
 
@@ -60,7 +60,10 @@ export function StatusBadge({
       )}
     >
       <meta.icon className={cn('size-3', meta.spin && 'animate-spin')} strokeWidth={2.5} aria-hidden />
-      {label ?? STATUS_LABEL[status as NotificationStatus] ?? status}
+      {label ??
+        STATUS_LABEL[status as NotificationStatus] ??
+        HEALTH_LABEL[status as ProviderHealth] ??
+        status}
     </span>
   );
 }

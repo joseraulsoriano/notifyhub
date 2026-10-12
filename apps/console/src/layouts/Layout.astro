@@ -1,0 +1,26 @@
+---
+import "@/styles/global.css"
+import { Shell } from "@/components/app/shell"
+interface Props { title: string }
+const { title } = Astro.props
+const path = Astro.url.pathname
+---
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="icon" href="data:," />
+    <!-- Cada familia de Fontshare en su propia petición: pedirlas juntas devuelve otra familia (ver DESIGN.md) -->
+    <link rel="preconnect" href="https://api.fontshare.com" />
+    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@500,700,800&display=swap" />
+    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" />
+    <title>{title} · NotifyHub</title>
+  </head>
+  <body>
+    <Shell client:load path={path}>
+      <slot />
+    </Shell>
+  </body>
+</html>
