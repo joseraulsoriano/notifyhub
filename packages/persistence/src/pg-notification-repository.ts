@@ -5,6 +5,7 @@ import type {
   NotificationListFilter,
   NotificationPage,
   NotificationRepository,
+  RecordAttemptInput,
 } from '@notifyhub/application';
 import type { DeliveryAttempt, NotificationRequest, NotificationStatus } from '@notifyhub/domain';
 import { assertTransition } from '@notifyhub/domain';
@@ -257,5 +258,71 @@ export class PgNotificationRepository implements NotificationRepository {
       })),
       next: rows.length > page.limit && last ? { createdAt: last.created_at, id: last.id } : null,
     };
+  }
+
+  async findById(id: string) {
+    const { rows } = await this.db.query<NotificationRow>(
+      `SELECT ${COLUMNS} FROM notification WHERE id = $1`,
+      [id],
+    );
+    return rows[0] ? toDomain(rows[0]) : null;
+  }
+
+  async recordAttempt(input: RecordAttemptInput): Promise<DeliveryAttempt> {
+    return inTransaction(this.db, async () => {
+      const { rows } = await this.db.query<{ id: string; attempted_at: Date; status: string }>(
+        // La migración no da valor por defecto al id (Prisma lo genera en el cliente): se genera aquí.
+        `INSERT INTO delivery_attempt (id, notification_id, provider_id, channel, attempt_number, is_fallback, status,
+           provider_message_id, provider_response, error_code, latency_ms)
+         SELECT gen_random_uuid(), $1, p.id, $3::"Channel", $4, $5, $6::"AttemptStatus", $7, $8::jsonb, $9, $10
+         FROM provider p WHERE p.code = $2
+         RETURNING id, attempted_at`,
+        [
+          input.notificationId,
+          input.providerCode,
+          input.channel,
+          input.attemptNumber,
+          input.isFallback,
+          input.status,
+          input.providerMessageId,
+          input.response ? JSON.stringify(input.response) : null,
+          input.errorCode,
+          input.latencyMs,
+        ],
+      );
+      const row = rows[0];
+      if (!row) throw new Error(`No existe el proveedor ${input.providerCode}`);
+      await this.db.query(
+        `INSERT INTO audit_log (notification_id, attempt_id, event_type, from_status, to_status, channel, provider_code, detail)
+         SELECT n.id, $2, 'delivery.attempt', n.status, n.status, $3::"Channel", $4, $5::jsonb
+         FROM notification n WHERE n.id = $1`,
+        [
+          input.notificationId,
+          row.id,
+          input.channel,
+          input.providerCode,
+          JSON.stringify({
+            attemptNumber: input.attemptNumber,
+            status: input.status,
+            isFallback: input.isFallback,
+            errorCode: input.errorCode,
+            latencyMs: input.latencyMs,
+          }),
+        ],
+      );
+      return {
+        id: row.id,
+        notificationId: input.notificationId,
+        providerCode: input.providerCode,
+        channel: input.channel,
+        attemptNumber: input.attemptNumber,
+        isFallback: input.isFallback,
+        status: input.status,
+        providerMessageId: input.providerMessageId,
+        errorCode: input.errorCode,
+        latencyMs: input.latencyMs,
+        attemptedAt: row.attempted_at,
+      };
+    });
   }
 }

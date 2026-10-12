@@ -28,6 +28,16 @@ pnpm turbo run build --filter=@notifyhub/api...
 pnpm --filter @notifyhub/api run deploy      # imprime la URL https://notifyhub-api.<subdominio>.workers.dev
 ```
 
+## Despachador
+
+El Worker `notifyhub-dispatcher` (`apps/dispatcher`) consume las tres colas. Se despliega aparte y no tiene URL pública:
+
+```bash
+pnpm --filter @notifyhub/dispatcher run deploy
+```
+
+Una cola solo admite un consumidor: si ya hay otro Worker consumiendo `notifications-*`, el despliegue falla.
+
 ## Migraciones
 
 Se aplican antes de desplegar, desde Node (Prisma no corre en el Worker):
@@ -63,6 +73,6 @@ La API key de producción se generó al sembrar Neon y vive solo en el llavero d
 
 ## Local
 
-`pnpm infra:up` levanta Postgres; `pnpm dev` corre el Worker con `wrangler dev` en `http://localhost:8787`.
+`pnpm infra:up` levanta Postgres; `pnpm dev` corre el Worker con `wrangler dev` en `http://localhost:8787`. Para ver las notificaciones avanzar hasta `DELIVERED` hay que correr la API y el despachador en la misma sesión (ver `apps/dispatcher/README.md`).
 Hyperdrive usa `localConnectionString` de `apps/api/wrangler.jsonc`, y Queues y el Durable Object se simulan en
 local. `tests/e2e/smoke.sh` hace lo mismo en CI.

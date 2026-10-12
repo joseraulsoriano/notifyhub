@@ -1,4 +1,5 @@
 import type {
+  AttemptStatus,
   Channel,
   DeliveryAttempt,
   NotificationRequest,
@@ -51,6 +52,20 @@ export interface NotificationPage {
   next: ListCursor | null;
 }
 
+export interface RecordAttemptInput {
+  notificationId: string;
+  providerCode: string;
+  channel: Channel;
+  attemptNumber: number;
+  isFallback: boolean;
+  status: AttemptStatus;
+  providerMessageId: string | null;
+  errorCode: string | null;
+  latencyMs: number | null;
+  /** Respuesta del proveedor ya sanitizada (sin datos personales). */
+  response?: Record<string, unknown> | null;
+}
+
 export interface NotificationRepository {
   findByIdempotencyKey(clientAppId: string, key: string): Promise<NotificationRequest | null>;
   /** Guarda la solicitud en RECEIVED y su primera entrada de bitácora en la misma transacción. */
@@ -60,6 +75,10 @@ export interface NotificationRepository {
   /** Libera una llave vencida (más de 24 h) para que el cliente pueda reutilizarla. */
   releaseIdempotencyKey(id: string): Promise<void>;
   findDetail(id: string, clientAppId: string): Promise<NotificationDetail | null>;
+  /** Para el despachador, que trabaja sin contexto de cliente. */
+  findById(id: string): Promise<NotificationRequest | null>;
+  /** Guarda el intento y su entrada de bitácora en la misma transacción. */
+  recordAttempt(input: RecordAttemptInput): Promise<DeliveryAttempt>;
   /** Lista las notificaciones de un cliente, de la más reciente a la más antigua. */
   list(
     clientAppId: string,

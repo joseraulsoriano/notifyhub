@@ -1,0 +1,33 @@
+// Despachador de NotifyHub: consume las colas de prioridad y entrega con proveedores (RF2, RF3).
+// Mismo Hyperdrive y mismas colas que apps/api; decisión en docs/adr/0007-workers-nativo.md.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "notifyhub-dispatcher",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-09",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  // Solo consume colas: no necesita una URL pública.
+  "workers_dev": false,
+
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "49c31e43fadf4d10952b31c0257d8c4a",
+      "localConnectionString": "postgresql://notifyhub:notifyhub@localhost:5432/notifyhub",
+    },
+  ],
+
+  // Los lotes se procesan en orden sobre una sola conexión a Postgres: lotes chicos y poca espera.
+  "queues": {
+    "consumers": [
+      { "queue": "notifications-high", "max_batch_size": 3, "max_batch_timeout": 1, "max_retries": 3 },
+      { "queue": "notifications-medium", "max_batch_size": 3, "max_batch_timeout": 2, "max_retries": 3 },
+      { "queue": "notifications-low", "max_batch_size": 3, "max_batch_timeout": 5, "max_retries": 3 },
+    ],
+  },
+
+  "vars": {
+    "LOG_LEVEL": "info",
+  },
+}

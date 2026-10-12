@@ -38,3 +38,11 @@ export class InvalidCursorError extends DomainError {
     super('El cursor de paginación no es válido; pide la primera página otra vez');
   }
 }
+
+export class ProviderNotRegisteredError extends DomainError {
+  readonly code = 'PROVIDER_NOT_REGISTERED';
+
+  constructor(providerCode: string) {
+    super(`No hay un SenderCreator registrado para el proveedor "${providerCode}"`);
+  }
+}

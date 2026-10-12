@@ -12,6 +12,7 @@ export default tseslint.config(
       '**/generated/**',
       '**/.wrangler/**',
       'apps/api/worker-configuration.d.ts',
+      'apps/dispatcher/worker-configuration.d.ts',
     ],
   },
   js.configs.recommended,
