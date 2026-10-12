@@ -38,6 +38,31 @@ pnpm --filter @notifyhub/dispatcher run deploy
 
 Una cola solo admite un consumidor: si ya hay otro Worker consumiendo `notifications-*`, el despliegue falla.
 
+## Consola web
+
+La consola (`apps/console`) es un sitio estático que se sirve como Worker con activos (plan gratuito), en `https://notifyhub-console.<subdominio>.workers.dev`. No lleva ninguna API key: quien la usa pega la URL y su llave en el diálogo «Conectar» y la llave solo vive en esa pestaña. Sin conexión funciona en modo demo con datos de ejemplo.
+
+```bash
+# la URL sugerida en el diálogo «Conectar» se fija al compilar
+PUBLIC_NOTIFYHUB_API_URL=https://notifyhub-api.<subdominio>.workers.dev \
+  pnpm --filter @notifyhub/console run deploy
+```
+
+Para que la consola pueda llamar a la API desde el navegador, su origen debe estar en `CORS_ALLOWED_ORIGINS` (variable en `apps/api/wrangler.jsonc`, ya incluye la consola y `localhost:4321`). Para que la salud de los proveedores se pueda editar desde la consola, agrega el nombre o id del cliente a `PROVIDER_ADMIN_CLIENTS` (en el panel de Cloudflare o con `--var`); vacío significa que nadie puede.
+
+### Orden de despliegue de esta versión
+
+Una cola solo admite un consumidor y el despachador procesa lo que haya en ellas, así que conviene este orden:
+
+```bash
+pnpm turbo run build
+pnpm --filter @notifyhub/api run deploy          # nuevos endpoints: listado, proveedores y bitácora
+pnpm --filter @notifyhub/dispatcher run deploy   # consume las colas y entrega con proveedores simulados
+pnpm --filter @notifyhub/console run deploy
+```
+
+Para volver atrás: `npx wrangler rollback <versión>` desde `apps/api` (la versión anterior de la API es `486ceabe-4790-4535-9469-75c640044344`) y `npx wrangler delete --name notifyhub-dispatcher` para quitar el consumidor.
+
 ## Migraciones
 
 Se aplican antes de desplegar, desde Node (Prisma no corre en el Worker):

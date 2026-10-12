@@ -1,0 +1,13 @@
+// Consola web de NotifyHub como Worker con activos estáticos (plan gratuito). Ver docs/despliegue.md.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "notifyhub-console",
+  "compatibility_date": "2026-10-09",
+  "assets": {
+    "directory": "./dist",
+    // Astro genera una carpeta por página (/notificaciones/index.html).
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page",
+  },
+  "observability": { "enabled": true },
+}

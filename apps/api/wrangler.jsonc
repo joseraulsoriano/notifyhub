@@ -40,6 +40,6 @@
     // Clientes que pueden cambiar la salud de los proveedores: ids o nombres separados por comas, o "*". Vacío = nadie.
     "PROVIDER_ADMIN_CLIENTS": "",
     // Orígenes de consolas web permitidos (separados por comas). Ver docs/despliegue.md.
-    "CORS_ALLOWED_ORIGINS": "http://localhost:4321,http://localhost:4322",
+    "CORS_ALLOWED_ORIGINS": "https://notifyhub-console.sc202357155.workers.dev,http://localhost:4321,http://localhost:4322",
   },
 }

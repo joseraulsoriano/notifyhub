@@ -11,7 +11,8 @@
     "preview": "astro preview",
     "astro": "astro",
     "typecheck": "astro sync && tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "deploy": "astro build && wrangler deploy"
   },
   "dependencies": {
     "@astrojs/react": "^7.0.1",
@@ -36,7 +37,8 @@
   },
   "devDependencies": {
     "typescript": "~5.8.3",
-    "vitest": "^3.1.0"
+    "vitest": "^3.1.0",
+    "wrangler": "^4.149.0"
   },
   "private": true,
   "description": "Consola web de NotifyHub: notificaciones multicanal con su ruta y fallback."
