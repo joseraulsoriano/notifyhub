@@ -7,15 +7,19 @@ Decisión y razones en [ADR-007](adr/0007-workers-nativo.md). Diagrama: [07-desp
 | Pieza           | Dónde                                                                      | Estado                |
 | --------------- | -------------------------------------------------------------------------- | --------------------- |
 | Código y CI     | GitHub `joseraulsoriano/notifyhub` (público)                               | ✅                    |
-| Worker          | tu cuenta de Cloudflare (plan gratuito), Worker `notifyhub-api`            | ⏳ primer deploy      |
+| Worker          | tu cuenta de Cloudflare (plan gratuito), Worker `notifyhub-api`            | ✅ desplegado         |
 | Colas           | Queues `notifications-high`, `-medium`, `-low`                             | ✅ creadas            |
 | Pool a Postgres | Hyperdrive `notifyhub` (su id va en `wrangler.jsonc`; usa el de tu cuenta) | ✅ creado             |
-| Rate limit      | Durable Object `RateLimiterObject` (SQLite), se crea con el deploy         | ⏳ primer deploy      |
+| Rate limit      | Durable Object `RateLimiterObject` (SQLite), se crea con el deploy         | ✅ desplegado         |
 | Postgres        | Neon, proyecto `notifyhub`, `aws-us-east-1`, PG 18                         | ✅ migrado y sembrado |
-| Tablero         | Jira `arquitectura-so`, historia SCRUM-50                                  | En curso              |
+| Despachador     | Worker `notifyhub-dispatcher`, consume las tres colas                      | ✅ desplegado         |
+| Consola         | Worker `notifyhub-console` (activos estáticos)                             | ✅ desplegada         |
+| Tablero         | Jira `arquitectura-so`, proyecto SCRUM                                     | ✅ al día             |
 
 Límites del plan gratuito que importan: 100,000 peticiones/día al Worker, 10,000 operaciones/día de Queues (unas
 3,300 notificaciones) y 100,000 consultas/día por Hyperdrive.
+
+Última verificación (12 oct 2026): API, despachador y consola desplegados en ese orden; una notificación creada en producción pasó de QUEUED a DELIVERED por el despachador, y la consola responde con CORS correcto.
 
 ## Desplegar
 
