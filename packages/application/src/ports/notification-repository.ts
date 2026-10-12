@@ -1,4 +1,10 @@
-import type { DeliveryAttempt, NotificationRequest, NotificationStatus } from '@notifyhub/domain';
+import type {
+  Channel,
+  DeliveryAttempt,
+  NotificationRequest,
+  NotificationStatus,
+  Priority,
+} from '@notifyhub/domain';
 
 export interface StatusHistoryEntry {
   from: NotificationStatus | null;
@@ -17,6 +23,34 @@ export type CreateResult =
   /** Otra solicitud con la misma Idempotency-Key ganó la carrera. */
   | { created: false; existing: NotificationRequest };
 
+export interface NotificationListFilter {
+  status?: NotificationStatus | undefined;
+  channel?: Channel | undefined;
+  priority?: Priority | undefined;
+  /** Busca en asunto, cuerpo, id e Idempotency-Key (sin distinguir mayúsculas). */
+  q?: string | undefined;
+}
+
+/** Posición en la lista: se ordena por fecha descendente y, a igualdad, por id (paginación por llave). */
+export interface ListCursor {
+  createdAt: Date;
+  id: string;
+}
+
+/** Fila de la lista: la notificación y un resumen de sus intentos, sin traer el historial completo. */
+export interface NotificationListItem {
+  notification: NotificationRequest;
+  attemptCount: number;
+  usedFallback: boolean;
+  finalChannel: Channel | null;
+  totalLatencyMs: number;
+}
+
+export interface NotificationPage {
+  items: NotificationListItem[];
+  next: ListCursor | null;
+}
+
 export interface NotificationRepository {
   findByIdempotencyKey(clientAppId: string, key: string): Promise<NotificationRequest | null>;
   /** Guarda la solicitud en RECEIVED y su primera entrada de bitácora en la misma transacción. */
@@ -26,4 +60,10 @@ export interface NotificationRepository {
   /** Libera una llave vencida (más de 24 h) para que el cliente pueda reutilizarla. */
   releaseIdempotencyKey(id: string): Promise<void>;
   findDetail(id: string, clientAppId: string): Promise<NotificationDetail | null>;
+  /** Lista las notificaciones de un cliente, de la más reciente a la más antigua. */
+  list(
+    clientAppId: string,
+    filter: NotificationListFilter,
+    page: { limit: number; cursor?: ListCursor },
+  ): Promise<NotificationPage>;
 }

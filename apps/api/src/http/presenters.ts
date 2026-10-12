@@ -1,5 +1,6 @@
-import type { NotificationDetail } from '@notifyhub/application';
+import type { NotificationDetail, NotificationListItem } from '@notifyhub/application';
 import type { NotificationRequest } from '@notifyhub/domain';
+import { maskRecipient } from './mask';
 
 export function summary(n: NotificationRequest) {
   return {
@@ -28,5 +29,28 @@ export function detail({ notification, attempts, history }: NotificationDetail) 
       attemptedAt: a.attemptedAt.toISOString(),
     })),
     history: history.map((h) => ({ from: h.from, to: h.to, at: h.occurredAt.toISOString() })),
+  };
+}
+
+/** Fila de la lista para la consola: sin datos personales completos y con el resumen de intentos. */
+export function listItem({
+  notification: n,
+  attemptCount,
+  usedFallback,
+  finalChannel,
+  totalLatencyMs,
+}: NotificationListItem) {
+  const body = n.message.body;
+  return {
+    ...summary(n),
+    updatedAt: n.updatedAt.toISOString(),
+    subject: n.message.subject ?? null,
+    preview: body.length > 140 ? `${body.slice(0, 139)}…` : body,
+    recipient: maskRecipient(n.recipient, n.preferredChannel),
+    idempotencyKey: n.idempotencyKey,
+    attemptCount,
+    usedFallback,
+    finalChannel,
+    totalLatencyMs,
   };
 }

@@ -1,4 +1,9 @@
-import { DomainError, IdempotencyConflictError, NotificationNotFoundError } from '@notifyhub/domain';
+import {
+  DomainError,
+  IdempotencyConflictError,
+  InvalidCursorError,
+  NotificationNotFoundError,
+} from '@notifyhub/domain';
 import { HTTPException } from 'hono/http-exception';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { ZodError } from 'zod';
@@ -14,6 +19,7 @@ export interface Problem {
 const DOMAIN_STATUS: [new (...args: never[]) => DomainError, ContentfulStatusCode][] = [
   [NotificationNotFoundError, 404],
   [IdempotencyConflictError, 409],
+  [InvalidCursorError, 400],
 ];
 
 const STATUS_TITLE: Partial<Record<number, string>> = {

@@ -30,3 +30,11 @@ export class NotificationNotFoundError extends DomainError {
     super(`No existe la notificación ${id}`);
   }
 }
+
+export class InvalidCursorError extends DomainError {
+  readonly code = 'INVALID_CURSOR';
+
+  constructor() {
+    super('El cursor de paginación no es válido; pide la primera página otra vez');
+  }
+}

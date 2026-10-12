@@ -1,4 +1,11 @@
-import type { CreateResult, NotificationDetail, NotificationRepository } from '@notifyhub/application';
+import type {
+  CreateResult,
+  ListCursor,
+  NotificationDetail,
+  NotificationListFilter,
+  NotificationPage,
+  NotificationRepository,
+} from '@notifyhub/application';
 import type { DeliveryAttempt, NotificationRequest, NotificationStatus } from '@notifyhub/domain';
 import { assertTransition } from '@notifyhub/domain';
 import type { ClientBase } from 'pg';
@@ -184,6 +191,71 @@ export class PgNotificationRepository implements NotificationRepository {
         attemptedAt: a.attempted_at,
       })),
       history: history.rows.map((h) => ({ from: h.from_status, to: h.to_status, occurredAt: h.occurred_at })),
+    };
+  }
+
+  async list(
+    clientAppId: string,
+    filter: NotificationListFilter,
+    page: { limit: number; cursor?: ListCursor },
+  ): Promise<NotificationPage> {
+    const params: unknown[] = [clientAppId];
+    const where = ['n.client_app_id = $1'];
+    const add = (sql: (placeholder: string) => string, value: unknown) => {
+      params.push(value);
+      where.push(sql(`$${params.length}`));
+    };
+    if (filter.status) add((p) => `n.status::text = ${p}`, filter.status);
+    if (filter.channel) add((p) => `n.preferred_channel::text = ${p}`, filter.channel);
+    if (filter.priority) add((p) => `n.priority::text = ${p}`, filter.priority);
+    if (filter.q) {
+      const like = `%${filter.q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+      add(
+        (p) =>
+          `(n.message->>'subject' ILIKE ${p} OR n.message->>'body' ILIKE ${p} OR n.id::text ILIKE ${p} OR n.idempotency_key ILIKE ${p})`,
+        like,
+      );
+    }
+    if (page.cursor) {
+      params.push(page.cursor.createdAt, page.cursor.id);
+      where.push(`(n.created_at, n.id) < ($${params.length - 1}::timestamptz, $${params.length}::uuid)`);
+    }
+    params.push(page.limit + 1);
+
+    const { rows } = await this.db.query<
+      NotificationRow & {
+        attempt_count: number;
+        used_fallback: boolean;
+        final_channel: NotificationRequest['preferredChannel'] | null;
+        total_latency_ms: number;
+      }
+    >(
+      `SELECT ${COLUMNS.split(',')
+        .map((c) => `n.${c.trim()}`)
+        .join(', ')},
+         (SELECT count(*)::int FROM delivery_attempt a WHERE a.notification_id = n.id) AS attempt_count,
+         EXISTS (SELECT 1 FROM delivery_attempt a WHERE a.notification_id = n.id AND a.is_fallback) AS used_fallback,
+         (SELECT a.channel FROM delivery_attempt a WHERE a.notification_id = n.id
+            ORDER BY a.attempt_number DESC LIMIT 1) AS final_channel,
+         (SELECT COALESCE(sum(a.latency_ms), 0)::int FROM delivery_attempt a WHERE a.notification_id = n.id) AS total_latency_ms
+       FROM notification n
+       WHERE ${where.join(' AND ')}
+       ORDER BY n.created_at DESC, n.id DESC
+       LIMIT $${params.length}`,
+      params,
+    );
+
+    const visible = rows.slice(0, page.limit);
+    const last = visible.at(-1);
+    return {
+      items: visible.map((row) => ({
+        notification: toDomain(row),
+        attemptCount: row.attempt_count,
+        usedFallback: row.used_fallback,
+        finalChannel: row.final_channel,
+        totalLatencyMs: row.total_latency_ms,
+      })),
+      next: rows.length > page.limit && last ? { createdAt: last.created_at, id: last.id } : null,
     };
   }
 }

@@ -81,6 +81,46 @@ paths:
               schema: { $ref: '#/components/schemas/Problem' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
 
+    get:
+      tags: [Notificaciones]
+      operationId: listNotifications
+      summary: Listar notificaciones del cliente (SCRUM-54)
+      description: |
+        Lista paginada, de la más reciente a la más antigua, para consolas y paneles. Devuelve solo las
+        notificaciones del cliente autenticado y **enmascara** los datos de contacto (política de datos personales).
+        El detalle completo con intentos e historial está en `GET /v1/notifications/{id}`.
+
+        Para llamar desde un navegador, el origen debe estar en `CORS_ALLOWED_ORIGINS` del Worker.
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/NotificationStatus' } }
+        - { name: channel, in: query, schema: { $ref: '#/components/schemas/Channel' } }
+        - { name: priority, in: query, schema: { $ref: '#/components/schemas/Priority' } }
+        - name: q
+          in: query
+          schema: { type: string, minLength: 1, maxLength: 100 }
+          description: 'Busca en asunto, cuerpo, id e Idempotency-Key (sin distinguir mayúsculas)'
+        - {
+            name: cursor,
+            in: query,
+            schema: { type: string },
+            description: Cursor opaco de la página anterior,
+          }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+      responses:
+        '200':
+          description: Página de notificaciones
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, nextCursor]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/NotificationListItem' } }
+                  nextCursor: { type: [string, 'null'] }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
   /v1/notifications/{id}:
     get:
       tags: [Notificaciones]
@@ -260,6 +300,25 @@ components:
           type: object
           properties:
             self: { type: string, examples: ['/v1/notifications/3f1c…'] }
+
+    NotificationListItem:
+      allOf:
+        - $ref: '#/components/schemas/NotificationSummary'
+        - type: object
+          required: [updatedAt, recipient, attemptCount, usedFallback, totalLatencyMs]
+          properties:
+            updatedAt: { type: string, format: date-time }
+            subject: { type: [string, 'null'] }
+            preview: { type: string, description: Primeros 140 caracteres del cuerpo }
+            recipient:
+              type: string
+              description: Dato de contacto del canal, enmascarado
+              examples: ['a***@example.com', '+52 ****-5678']
+            idempotencyKey: { type: [string, 'null'] }
+            attemptCount: { type: integer, minimum: 0 }
+            usedFallback: { type: boolean }
+            finalChannel: { oneOf: [{ $ref: '#/components/schemas/Channel' }, { type: 'null' }] }
+            totalLatencyMs: { type: integer, minimum: 0 }
 
     NotificationDetail:
       allOf:

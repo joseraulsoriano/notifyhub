@@ -6,7 +6,10 @@ import type {
   Clock,
   CreateResult,
   IdGenerator,
+  ListCursor,
   NotificationDetail,
+  NotificationListFilter,
+  NotificationPage,
   NotificationQueue,
   NotificationRepository,
   RateLimiter,
@@ -52,6 +55,47 @@ export class InMemoryNotificationRepository implements NotificationRepository {
     const notification = this.items.get(id);
     if (!notification || notification.clientAppId !== clientAppId) return null;
     return { notification, attempts: [], history: this.history.get(id) ?? [] };
+  }
+
+  async list(
+    clientAppId: string,
+    filter: NotificationListFilter,
+    page: { limit: number; cursor?: ListCursor },
+  ): Promise<NotificationPage> {
+    const q = filter.q?.toLowerCase();
+    const sorted = [...this.items.values()]
+      .filter((n) => n.clientAppId === clientAppId)
+      .filter((n) => !filter.status || n.status === filter.status)
+      .filter((n) => !filter.channel || n.preferredChannel === filter.channel)
+      .filter((n) => !filter.priority || n.priority === filter.priority)
+      .filter(
+        (n) =>
+          !q ||
+          [n.message.subject ?? '', n.message.body, n.id, n.idempotencyKey ?? ''].some((t) =>
+            t.toLowerCase().includes(q),
+          ),
+      )
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || (a.id < b.id ? 1 : -1));
+    const { cursor } = page;
+    const after = cursor
+      ? sorted.filter(
+          (n) =>
+            n.createdAt.getTime() < cursor.createdAt.getTime() ||
+            (n.createdAt.getTime() === cursor.createdAt.getTime() && n.id < cursor.id),
+        )
+      : sorted;
+    const slice = after.slice(0, page.limit);
+    const last = slice.at(-1);
+    return {
+      items: slice.map((notification) => ({
+        notification,
+        attemptCount: 0,
+        usedFallback: false,
+        finalChannel: null,
+        totalLatencyMs: 0,
+      })),
+      next: after.length > page.limit && last ? { createdAt: last.createdAt, id: last.id } : null,
+    };
   }
 }
 

@@ -3,16 +3,23 @@ import type {
   ClientApp,
   ClientAppRepository,
   GetNotificationStatus,
+  ListNotifications,
   RateLimiter,
 } from '@notifyhub/application';
 import { hashApiKey } from '@notifyhub/application';
 import type { AppConfig } from '@notifyhub/shared';
 import type { Context } from 'hono';
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { HTTPException } from 'hono/http-exception';
-import { detail, summary } from './http/presenters';
+import { detail, listItem, summary } from './http/presenters';
 import { httpProblem, toProblem } from './http/problem';
-import { CreateNotificationSchema, IdempotencyKeySchema, NotificationIdSchema } from './http/schemas';
+import {
+  CreateNotificationSchema,
+  IdempotencyKeySchema,
+  ListNotificationsQuerySchema,
+  NotificationIdSchema,
+} from './http/schemas';
 
 /** Lo que necesita la capa HTTP. Los casos de uso no conocen Hono ni Cloudflare. */
 export interface ApiDeps {
@@ -21,6 +28,7 @@ export interface ApiDeps {
   limiter: RateLimiter;
   accept: AcceptNotification;
   getStatus: GetNotificationStatus;
+  list: ListNotifications;
 }
 
 export interface OpenedDeps {
@@ -37,6 +45,36 @@ type AppEnv<B> = { Bindings: B; Variables: { deps: ApiDeps; clientApp: ClientApp
  */
 export function createApp<B extends object = object>(open: (c: Context<AppEnv<B>>) => Promise<OpenedDeps>) {
   const app = new Hono<AppEnv<B>>();
+
+  /**
+   * CORS para consolas web (SCRUM-54). `CORS_ALLOWED_ORIGINS` es una lista separada por comas, o `*`.
+   * Sin la variable no se envían encabezados CORS y solo funcionan clientes del mismo origen o de servidor.
+   */
+  app.use(
+    '/v1/*',
+    cors({
+      origin: (origin, c) => {
+        const allowed = String(
+          (c.env as { CORS_ALLOWED_ORIGINS?: string } | undefined)?.CORS_ALLOWED_ORIGINS ?? '',
+        )
+          .split(',')
+          .map((o) => o.trim())
+          .filter(Boolean);
+        return allowed.includes('*') ? '*' : allowed.includes(origin) ? origin : '';
+      },
+      allowHeaders: ['Content-Type', 'X-API-Key', 'Idempotency-Key'],
+      allowMethods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
+      exposeHeaders: [
+        'Location',
+        'Idempotent-Replayed',
+        'RateLimit-Limit',
+        'RateLimit-Remaining',
+        'RateLimit-Reset',
+        'Retry-After',
+      ],
+      maxAge: 600,
+    }),
+  );
 
   app.onError((error, c) => {
     const problem = toProblem(error);
@@ -106,6 +144,13 @@ export function createApp<B extends object = object>(open: (c: Context<AppEnv<B>
     c.header('Location', `/v1/notifications/${notification.id}`);
     if (replayed) c.header('Idempotent-Replayed', 'true');
     return c.json(summary(notification), 202);
+  });
+
+  /** SCRUM-54: lista paginada con filtros, para la consola. Datos de contacto enmascarados. */
+  v1.get('/notifications', async (c) => {
+    const { limit, cursor, ...filter } = ListNotificationsQuerySchema.parse(c.req.query());
+    const page = await c.var.deps.list.execute({ clientAppId: c.var.clientApp.id, filter, limit, cursor });
+    return c.json({ items: page.items.map(listItem), nextCursor: page.nextCursor });
   });
 
   /** NH-18: estado actual e historial de intentos. */

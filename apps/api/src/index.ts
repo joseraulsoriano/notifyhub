@@ -1,4 +1,4 @@
-import { AcceptNotification, GetNotificationStatus } from '@notifyhub/application';
+import { AcceptNotification, GetNotificationStatus, ListNotifications } from '@notifyhub/application';
 import { PgClientAppRepository, PgNotificationRepository } from '@notifyhub/persistence';
 import { loadConfig } from '@notifyhub/shared';
 import { Client } from 'pg';
@@ -31,6 +31,7 @@ export default createApp<Env>(async (c) => {
       limiter: new DurableObjectRateLimiter(env.RATE_LIMITER),
       accept: new AcceptNotification(notifications, queue, clock, ids),
       getStatus: new GetNotificationStatus(notifications),
+      list: new ListNotifications(notifications),
     },
     close: () => db.end(),
   };

@@ -1,4 +1,4 @@
-import { CHANNELS, PRIORITIES, RECIPIENT_FIELD_BY_CHANNEL } from '@notifyhub/domain';
+import { CHANNELS, NOTIFICATION_STATUSES, PRIORITIES, RECIPIENT_FIELD_BY_CHANNEL } from '@notifyhub/domain';
 import { z } from 'zod';
 
 /** Acepta "alta", "media", "baja" además de HIGH, MEDIUM, LOW (RF1 está redactado en español). */
@@ -60,3 +60,15 @@ export const IdempotencyKeySchema = z
   .optional();
 
 export const NotificationIdSchema = z.string().uuid();
+
+/** GET /v1/notifications: filtros opcionales y paginación por cursor. */
+export const ListNotificationsQuerySchema = z.object({
+  status: z
+    .preprocess((v) => (typeof v === 'string' ? v.toUpperCase() : v), z.enum(NOTIFICATION_STATUSES))
+    .optional(),
+  channel: Channel.optional(),
+  priority: Priority.optional(),
+  q: z.string().trim().min(1).max(100).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  cursor: z.string().min(1).max(200).optional(),
+});

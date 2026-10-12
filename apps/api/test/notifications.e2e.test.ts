@@ -7,6 +7,7 @@ import {
   InMemoryNotificationQueue,
   InMemoryNotificationRepository,
   InMemoryRateLimiter,
+  ListNotifications,
   SequentialIds,
 } from '@notifyhub/application';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -39,6 +40,7 @@ describe('API /v1/notifications', () => {
       limiter: new InMemoryRateLimiter(),
       accept: new AcceptNotification(repository, queue, new FixedClock(), new SequentialIds()),
       getStatus: new GetNotificationStatus(repository),
+      list: new ListNotifications(repository),
     };
     app = createApp(async () => ({ deps }));
   });
