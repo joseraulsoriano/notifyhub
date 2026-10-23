@@ -146,7 +146,7 @@ docs/                 ADRs, diagramas Mermaid, OpenAPI, riesgos y pruebas
 ### Diagramas
 
 Fuente Mermaid en [docs/diagrams](docs/diagrams). Para regenerar una imagen desde esa carpeta:
-`mmdc -i 07-despliegue.mmd -o render/07-despliegue.png -b white -s 2` (y lo mismo con `.svg`).
+`mmdc -i 07-despliegue.mmd -o render/07-despliegue.png -b white -s 2`.
 
 **Contexto**
 
