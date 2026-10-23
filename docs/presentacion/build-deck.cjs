@@ -151,7 +151,7 @@ pres.addSection({ title: 'Apertura' });
   s.addNotes(
     'Buenas tardes. Soy Andreea y voy a presentar NotifyHub, el proyecto que construimos José Raúl y yo en conjunto para Arquitectura de Software. ' +
       'NotifyHub es un servicio que manda notificaciones por correo, SMS, push y webhook, y se asegura de que lleguen: si un canal falla, el sistema prueba otro solo. ' +
-      'El logo cuenta esa idea: una ruta principal y una de respaldo que llegan al mismo destino. Dura unos ocho minutos y termina con una demostración.',
+      'El logo cuenta esa idea: una ruta principal y una de respaldo que llegan al mismo destino. Dura unos diez minutos y termina con una demostración.',
   );
 }
 
@@ -377,7 +377,102 @@ pres.addSection({ title: 'Cómo está hecho' });
   );
 }
 
-// ============ 8. Librería ============
+// ============ 8. Capas ============
+// Pensadas para verse, no para leerse: una idea por diapositiva y casi todo en el dibujo.
+pres.addSection({ title: 'Ingeniería' });
+{
+  const s = pres.addSlide({ masterName: 'CONTENIDO', sectionTitle: 'Ingeniería' });
+  title(s, 'Construido por capas');
+  // De arriba abajo, como dependen: cada capa solo conoce a las de abajo (package.json de cada paquete).
+  const layers = [
+    ['Apps', 'api · dispatcher · console', C.accent5],
+    ['Adaptadores', 'persistence · providers', C.accent4],
+    ['Aplicación', 'application', C.accent3],
+    ['Dominio', 'domain', C.accent2],
+  ];
+  const x = 0.6, w = 9.4, h = 1.0, y0 = 1.7, step = 1.18;
+  layers.forEach(([n, pk, c], i) => {
+    const y = y0 + i * step, inset = i * 0.35; // cada capa más angosta: el centro es el dominio
+    s.addShape(pres.ShapeType.roundRect, { x: x + inset, y, w: w - 2 * inset, h, fill: { color: C.background2 }, line: { color: c, width: 2.5 }, rectRadius: 0.1, objectName: `Capa ${n}` });
+    pill(s, `Marcador ${n}`, x + inset + 0.3, y + 0.44, 0.5, c);
+    T(s, `Capa ${n} nombre`, n, { x: x + inset + 1.0, y: y + 0.3, w: 3.0, h: 0.42, fontSize: 22, bold: true, color: C.text1 });
+    T(s, `Capa ${n} paquetes`, pk, { x: x + inset + 4.0, y: y + 0.36, w: w - 2 * inset - 4.3, h: 0.32, fontSize: 15, color: C.text2, fontFace: 'Courier New', align: 'right' });
+  });
+  arrow(s, 'Dependencias hacia dentro', 10.6, y0 + 0.2, 10.6, y0 + 3 * step + h - 0.2, C.text1);
+  T(s, 'Nota dependencias', 'todo apunta\nal dominio', { x: 10.85, y: 3.35, w: 1.9, h: 0.7, fontSize: 15, color: C.text2 });
+  T(s, 'Idea', 'El dominio no sabe qué base de datos ni qué proveedor usamos.', { x: 0.6, y: 6.4, w: 12.1, h: 0.45, fontSize: 18, bold: true, color: C.text1 });
+  s.addNotes(
+    'El código está en capas, como una cebolla. En el centro está el dominio: las notificaciones, sus eventos y la máquina de estados. Son reglas puras, no saben si hay Postgres, Twilio o Cloudflare. ' +
+      'Encima van los casos de uso, luego los adaptadores que hablan con la base de datos y con los proveedores, y afuera las aplicaciones: la API, el despachador y la consola. ' +
+      'Las dependencias siempre apuntan hacia el dominio, por eso podemos cambiar de proveedor o de base de datos sin tocar las reglas del negocio.',
+  );
+}
+
+// ============ 9. Monorepo ============
+{
+  const s = pres.addSlide({ masterName: 'CONTENIDO', sectionTitle: 'Ingeniería' });
+  title(s, 'Un repositorio, un comando');
+  card(s, 'Repositorio', 0.6, 1.65, 7.6, 4.4);
+  T(s, 'Raíz', 'notifyhub/', { x: 0.95, y: 1.85, w: 4, h: 0.4, fontSize: 20, bold: true, color: C.text1, fontFace: 'Courier New' });
+  const chips = (label, names, y, c) => {
+    T(s, `${label} carpeta`, label, { x: 0.95, y, w: 2, h: 0.35, fontSize: 16, bold: true, color: C.text2, fontFace: 'Courier New' });
+    names.forEach((n, i) => {
+      const cx = 0.95 + (i % 3) * 2.35, cy = y + 0.45 + Math.floor(i / 3) * 0.62;
+      node(s, `${label} ${n}`, cx, cy, 2.15, 0.5, [[n, { fontSize: 14, bold: true, color: C.text1 }]], { stroke: c, width: 2 });
+    });
+  };
+  chips('apps/', ['api', 'dispatcher', 'console'], 2.4, C.accent5);
+  chips('packages/', ['domain', 'application', 'persistence', 'providers', 'shared', 'client', 'ui'], 3.55, C.accent2);
+  const tools = [['pnpm', 'comparte dependencias'], ['Turborepo', 'construye y prueba en orden'], ['Un cambio', 'se prueba en todo lo que lo usa']];
+  tools.forEach(([big, small], i) => {
+    const y = 1.75 + i * 1.55;
+    pill(s, `Marcador ${i + 1}`, 8.7, y + 0.1, 0.5, [C.accent3, C.accent4, C.accent6][i]);
+    T(s, `Herramienta ${i + 1}`, big, { x: 8.7, y: y + 0.3, w: 4.0, h: 0.5, fontSize: 26, bold: true, color: C.text1 });
+    T(s, `Para qué ${i + 1}`, small, { x: 8.7, y: y + 0.85, w: 4.0, h: 0.35, fontSize: 15, color: C.text2 });
+  });
+  s.addShape(pres.ShapeType.roundRect, { x: 0.6, y: 6.3, w: 4.2, h: 0.46, fill: { color: C.text1 }, line: { color: C.text1, width: 0 }, rectRadius: 0.08, objectName: 'Comando fondo' });
+  T(s, 'Comando', '$ pnpm test', { x: 0.85, y: 6.38, w: 3.8, h: 0.3, fontSize: 16, color: C.background1, fontFace: 'Courier New' });
+  s.addNotes(
+    'Todo vive en un solo repositorio. Arriba están las aplicaciones y abajo los paquetes que comparten. ' +
+      'pnpm instala las dependencias una sola vez para todos, y Turborepo construye y prueba cada paquete en el orden correcto. ' +
+      'Así, si cambiamos el dominio, un solo comando prueba de inmediato todo lo que depende de él.',
+  );
+}
+
+// ============ 10. Entrega ============
+{
+  const s = pres.addSlide({ masterName: 'CONTENIDO', sectionTitle: 'Ingeniería' });
+  title(s, 'Cada cambio, verificado antes de salir');
+  // ci.yml corre solo con cada push; deploy.yml se lanza a mano a propósito (por eso el tramo punteado).
+  const stops = [['push', C.text2], ['formato y lint', C.accent2], ['tipos', C.accent2], ['pruebas', C.accent3], ['build', C.accent3], ['humo', C.accent4], ['producción', C.accent6]];
+  const x0 = 1.0, x1 = 12.2, ly = 2.55, dx = (x1 - x0) / (stops.length - 1);
+  s.addShape(pres.ShapeType.roundRect, { x: x0, y: ly - 0.05, w: dx * 5, h: 0.1, fill: { color: C.text1 }, line: { color: C.text1, width: 0 }, rectRadius: 0.05, objectName: 'Línea CI' });
+  line(s, 'Tramo manual', x0 + dx * 5, ly, dx, 0.001, C.text1, { dash: 'sysDot', width: 3 });
+  stops.forEach(([n, c], i) => {
+    const cx = x0 + i * dx;
+    dot(s, `Parada ${n}`, cx - 0.18, ly - 0.18, 0.36, c, i === stops.length - 1);
+    T(s, `Parada ${n} nombre`, n, { x: cx - 0.9, y: ly + 0.35, w: 1.8, h: 0.35, fontSize: 15, bold: true, color: C.text1, align: 'center' });
+  });
+  T(s, 'Tramo CI', 'GitHub Actions · automático', { x: x0, y: ly - 0.75, w: 5, h: 0.35, fontSize: 15, color: C.text2 });
+  T(s, 'Tramo deploy', 'un clic', { x: x0 + dx * 5, y: ly - 0.75, w: dx, h: 0.35, fontSize: 15, color: C.text2, align: 'center' });
+  const stats = [['7 ADRs', 'cada decisión con su porqué', C.accent2], ['41 historias', 'en Jira, por sprint', C.accent3], ['5 sprints', 'del diseño a la entrega', C.accent4]];
+  stats.forEach(([big, small, c], i) => {
+    const x = 0.6 + i * 4.1;
+    card(s, `Dato ${i + 1}`, x, 4.0, 3.9, 1.75);
+    pill(s, `Marcador dato ${i + 1}`, x + 0.3, 4.25, 0.5, c);
+    T(s, `Cifra ${i + 1}`, big, { x: x + 0.3, y: 4.45, w: 3.3, h: 0.6, fontSize: 30, bold: true, color: C.text1 });
+    T(s, `Explicación ${i + 1}`, small, { x: x + 0.3, y: 5.1, w: 3.3, h: 0.35, fontSize: 15, color: C.text2 });
+  });
+  T(s, 'Idea', 'Las ADRs que cambiamos siguen ahí: BullMQ y Containers dieron paso a Workers.', { x: 0.6, y: 6.2, w: 12.1, h: 0.45, fontSize: 16, color: C.text1 });
+  s.addNotes(
+    'Cada cambio pasa por la misma vía. Con cada push, GitHub Actions revisa formato, lint y tipos, corre las pruebas, construye y levanta una prueba de humo con la API y un Postgres reales. ' +
+      'El despliegue a producción es un clic a propósito: aplica las migraciones en Neon y publica los Workers. ' +
+      'Las decisiones grandes están escritas en siete ADRs. Las que cambiamos no se borran: por ejemplo, empezamos con BullMQ y Redis y con Cloudflare Containers, y la ADR siete explica por qué pasamos a Workers. ' +
+      'Y todo el trabajo está en Jira: cuarenta y una historias repartidas en cinco sprints.',
+  );
+}
+
+// ============ 11. Librería ============
 pres.addSection({ title: 'Open source' });
 {
   const s = pres.addSlide({ masterName: 'CONTENIDO', sectionTitle: 'Open source' });
@@ -402,7 +497,7 @@ pres.addSection({ title: 'Open source' });
   );
 }
 
-// ============ 9. Real vs simulado ============
+// ============ 12. Real vs simulado ============
 {
   const s = pres.addSlide({ masterName: 'CONTENIDO', sectionTitle: 'Open source' });
   title(s, 'Qué es real, qué es simulado y qué falta');
@@ -431,7 +526,7 @@ pres.addSection({ title: 'Open source' });
   );
 }
 
-// ============ 10. Siguientes pasos ============
+// ============ 13. Siguientes pasos ============
 pres.addSection({ title: 'Cierre' });
 {
   const s = pres.addSlide({ masterName: 'CONTENIDO', sectionTitle: 'Cierre' });
@@ -456,7 +551,7 @@ pres.addSection({ title: 'Cierre' });
   );
 }
 
-// ============ 11. Cierre ============
+// ============ 14. Cierre ============
 {
   const s = pres.addSlide({ masterName: 'PORTADA', sectionTitle: 'Cierre' });
   s.addImage({ path: A('logo-paper.png'), x: 0.8, y: 1.3, w: 1.2, h: 1.2, altText: 'Logo de NotifyHub' });
