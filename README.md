@@ -143,10 +143,38 @@ docs/                 ADRs, diagramas Mermaid, OpenAPI, riesgos y pruebas
 | Chain of Responsibility / Decorator | `FallbackPolicy` y reintentos (circuit breaker pendiente)                                                  | MVP / S3 |
 | Observer                            | `dispatch/event-publisher.ts`: `EventPublisher` (outbox y suscriptores: S4)                                | MVP / S4 |
 
-Diagramas: [contexto](docs/diagrams/01-contexto.mmd) · [contenedores](docs/diagrams/02-contenedores.mmd) ·
-[clases y patrones](docs/diagrams/03-clases-patrones.mmd) · [ER](docs/diagrams/04-er.mmd) ·
-[secuencia](docs/diagrams/05-secuencia-envio.mmd) · [estados](docs/diagrams/06-estados.mmd) ·
-[despliegue](docs/diagrams/07-despliegue.mmd)
+### Diagramas
+
+Fuente Mermaid en [docs/diagrams](docs/diagrams). Para regenerar una imagen desde esa carpeta:
+`mmdc -i 07-despliegue.mmd -o render/07-despliegue.png -b white -s 2` (y lo mismo con `.svg`).
+
+**Contexto**
+
+![Diagrama de contexto](docs/diagrams/render/01-contexto.png)
+
+**Contenedores**
+
+![Diagrama de contenedores](docs/diagrams/render/02-contenedores.png)
+
+**Clases y patrones**
+
+![Diagrama de clases y patrones](docs/diagrams/render/03-clases-patrones.png)
+
+**Modelo ER**
+
+![Modelo entidad-relación](docs/diagrams/render/04-er.png)
+
+**Secuencia de envío**
+
+![Secuencia de envío con fallback](docs/diagrams/render/05-secuencia-envio.png)
+
+**Estados de la notificación**
+
+![Máquina de estados de la notificación](docs/diagrams/render/06-estados.png)
+
+**Despliegue**
+
+![Despliegue en Cloudflare](docs/diagrams/render/07-despliegue.png)
 
 ## Comandos
 

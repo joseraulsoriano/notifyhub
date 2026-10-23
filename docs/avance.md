@@ -2,19 +2,21 @@
 
 Corte: 9 de octubre de 2026. Claves: `NH-n` (planeación) = `SCRUM-(n+8)` (Jira).
 
+![Cronograma por sprint](diagrams/render/00-cronograma.png)
+
 ## Sprint 0 · Planeación y diseño (28 sep – 9 oct)
 
-| Jira     | Historia                        | Resp. | Estado                           | Evidencia                                                                                            |
-| -------- | ------------------------------- | ----- | -------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| SCRUM-9  | Alcance, RF y RNF               | JRS   | ✅                               | Descripción de la épica SCRUM-1                                                                      |
-| SCRUM-10 | Stack y ADRs                    | JRS   | ✅                               | [docs/adr](adr/README.md): ADR-001 a ADR-005                                                         |
-| SCRUM-11 | Modelo de dominio y clases GoF  | AMM   | ✅                               | [03-clases-patrones.mmd](diagrams/03-clases-patrones.mmd) · `packages/domain`                        |
-| SCRUM-12 | Modelo ER                       | AMM   | ✅                               | [04-er.mmd](diagrams/04-er.mmd) · [schema.prisma](../packages/persistence/prisma/schema.prisma)      |
-| SCRUM-13 | C4 y despliegue                 | JRS   | ✅                               | [01](diagrams/01-contexto.mmd), [02](diagrams/02-contenedores.mmd), [07](diagrams/07-despliegue.mmd) |
-| SCRUM-14 | Secuencia y estados             | AMM   | ✅                               | [05](diagrams/05-secuencia-envio.mmd), [06](diagrams/06-estados.mmd) · `status-machine.ts`           |
-| SCRUM-15 | Contrato OpenAPI 3.1            | JRS   | ✅                               | [openapi.yaml](api/openapi.yaml), validado con Redocly                                               |
-| SCRUM-16 | Cronograma y backlog            | JRS   | ✅                               | Tablero Jira · [backlog.json](planeacion/backlog.json)                                               |
-| SCRUM-17 | Riesgos y estrategia de pruebas | AMM   | 🟡 Borrador para revisión de AMM | [riesgos-y-pruebas.md](riesgos-y-pruebas.md)                                                         |
+| Jira     | Historia                        | Resp. | Estado                           | Evidencia                                                                                                                 |
+| -------- | ------------------------------- | ----- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| SCRUM-9  | Alcance, RF y RNF               | JRS   | ✅                               | Descripción de la épica SCRUM-1                                                                                           |
+| SCRUM-10 | Stack y ADRs                    | JRS   | ✅                               | [docs/adr](adr/README.md): ADR-001 a ADR-005                                                                              |
+| SCRUM-11 | Modelo de dominio y clases GoF  | AMM   | ✅                               | [03-clases-patrones](diagrams/render/03-clases-patrones.png) · `packages/domain`                                          |
+| SCRUM-12 | Modelo ER                       | AMM   | ✅                               | [04-er](diagrams/render/04-er.png) · [schema.prisma](../packages/persistence/prisma/schema.prisma)                        |
+| SCRUM-13 | C4 y despliegue                 | JRS   | ✅                               | [01](diagrams/render/01-contexto.png), [02](diagrams/render/02-contenedores.png), [07](diagrams/render/07-despliegue.png) |
+| SCRUM-14 | Secuencia y estados             | AMM   | ✅                               | [05](diagrams/render/05-secuencia-envio.png), [06](diagrams/render/06-estados.png) · `status-machine.ts`                  |
+| SCRUM-15 | Contrato OpenAPI 3.1            | JRS   | ✅                               | [openapi.yaml](api/openapi.yaml), validado con Redocly                                                                    |
+| SCRUM-16 | Cronograma y backlog            | JRS   | ✅                               | Tablero Jira · [backlog.json](planeacion/backlog.json)                                                                    |
+| SCRUM-17 | Riesgos y estrategia de pruebas | AMM   | 🟡 Borrador para revisión de AMM | [riesgos-y-pruebas.md](riesgos-y-pruebas.md)                                                                              |
 
 ## Sprint 1 · Núcleo y recepción, RF1 (12 – 23 oct), adelantado
 

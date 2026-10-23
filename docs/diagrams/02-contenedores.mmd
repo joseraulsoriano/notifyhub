@@ -1,6 +1,8 @@
 flowchart TB
   cli["Aplicaciones cliente"]
+  ops["Operación y soporte"]
   subgraph NH["NotifyHub"]
+    con["Consola web<br/>Astro · sitio estático"]
     api["API REST<br/>Worker Hono · RF1"]
     q[("Cloudflare Queues<br/>colas alta / media / baja")]
     disp["Dispatcher<br/>Worker consumidor<br/>Factory Method + Strategy<br/>RF2 · RF3"]
@@ -14,6 +16,8 @@ flowchart TB
   otel["OpenTelemetry Collector"]
   graf["Grafana<br/>Prometheus · Loki · Tempo"]
   cli --> api
+  ops --> con
+  con --> api
   api --> db
   api --> q
   q --> disp

@@ -1,18 +1,21 @@
 flowchart LR
   dev["Desarrolladores"] -- "push / PR" --> gh["GitHub<br/>repo + Actions (CI)"]
-  gh -- "Deploy (manual):<br/>migraciones + wrangler deploy" --> cf
+  gh -- "wrangler deploy (manual)" --> cf
   cli["Clientes<br/>X-API-Key"] -- "HTTPS" --> api
+  ops["Operación<br/>navegador"] -- "HTTPS" --> con
   subgraph cf["Cloudflare · plan gratuito"]
+    con["Worker notifyhub-console<br/>activos estáticos"]
     api["Worker notifyhub-api<br/>Hono · RF1"]
     rl["Durable Object<br/>RateLimiterObject"]
     q[("Queues<br/>high / medium / low")]
     hd["Hyperdrive<br/>pool de conexiones"]
-    disp["Worker dispatcher<br/>consumidor (S2)"]
+    disp["Worker notifyhub-dispatcher<br/>consumidor · RF2 · RF3"]
+    con -- "fetch + CORS" --> api
     api --> rl
     api --> q
     api --> hd
-    q -.-> disp
-    disp -.-> hd
+    q --> disp
+    disp --> hd
   end
   hd -- "TLS" --> pg[("Neon Postgres<br/>aws-us-east-1")]
-  cf -. "OTLP" .-> gc["Grafana Cloud<br/>métricas, logs, trazas"]
+  cf -. "OTLP (planeado · ADR-005)" .-> gc["Grafana Cloud<br/>métricas, logs, trazas"]

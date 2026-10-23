@@ -1,6 +1,8 @@
 # Despliegue en Cloudflare (plan gratuito)
 
-Decisión y razones en [ADR-007](adr/0007-workers-nativo.md). Diagrama: [07-despliegue.mmd](diagrams/07-despliegue.mmd).
+Decisión y razones en [ADR-007](adr/0007-workers-nativo.md).
+
+![Despliegue en Cloudflare](diagrams/render/07-despliegue.png)
 
 ## Qué está conectado
 
