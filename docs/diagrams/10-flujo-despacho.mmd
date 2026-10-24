@@ -1,0 +1,20 @@
+flowchart TD
+  A([Inicio: mensaje en la cola]) --> B{¿La notificación existe<br/>y sigue en QUEUED?}
+  B -- No --> B1[Descartar: ya procesada<br/>entrega al menos una vez] --> Z([Fin])
+  B -- Sí --> C[QUEUED → SENDING]
+  C --> D[FallbackPolicy arma la cadena de canales<br/>preferido → secundarios según destinatario]
+  D --> E[Tomar siguiente canal]
+  E --> F[Strategy ordena proveedores del canal<br/>Costo · Prioridad · Disponibilidad]
+  F --> G[SenderRegistry crea el emisor<br/>Factory Method]
+  G --> H[send al proveedor<br/>registrar intento + evento]
+  H --> I{¿Respuesta del proveedor?}
+  I -- Éxito --> J[SENDING → SENT → DELIVERED] --> Z
+  I -- Error transitorio --> K{¿Quedan intentos?<br/>máx. 3}
+  K -- Sí --> L[SENDING → RETRYING<br/>esperar backoff exponencial] --> M[RETRYING → SENDING] --> H
+  K -- No --> N{¿Otro proveedor<br/>en este canal?}
+  I -- Error permanente --> N
+  N -- Sí --> G
+  N -- No --> O[SENDING → FALLBACK]
+  O --> P{¿Hay otro canal<br/>con proveedor habilitado?}
+  P -- Sí --> Q[FALLBACK → SENDING] --> E
+  P -- No --> R[FALLBACK → FAILED<br/>sin canales alternativos] --> Z

@@ -176,6 +176,25 @@ Fuente Mermaid en [docs/diagrams](docs/diagrams). Para regenerar una imagen desd
 
 ![Despliegue en Cloudflare](docs/diagrams/render/07-despliegue.png)
 
+**Casos de uso**
+
+![Diagrama de casos de uso](docs/diagrams/render/08-casos-de-uso.png)
+
+**Flujo de recepción**
+
+![Flujo de recepción](docs/diagrams/render/09-flujo-recepcion.png)
+
+**Flujo de despacho con reintentos y fallback**
+
+![Flujo de despacho](docs/diagrams/render/10-flujo-despacho.png)
+
+**Navegación de la consola**
+
+![Diagrama de navegación](docs/diagrams/render/11-navegacion.png)
+
+Informe con todos los diagramas explicados, la arquitectura y la metodología: [docs/informe/notifyhub.pdf](docs/informe/notifyhub.pdf)
+(fuente LaTeX en la misma carpeta; `latexmk -lualatex notifyhub.tex`).
+
 ## Comandos
 
 | Comando                             | Qué hace                                             |

@@ -1,0 +1,47 @@
+flowchart LR
+  app(["👤 Aplicación cliente"])
+  ops(["👤 Operador / soporte"])
+  adm(["👤 Administrador"])
+  subgraph NH["Sistema NotifyHub"]
+    direction TB
+    uc1(["CU-01 Enviar notificación"])
+    uc4(["CU-04 Consultar estado de una notificación"])
+    uc5(["CU-05 Listar y filtrar notificaciones"])
+    uc12(["CU-12 Conectar consola a la API"])
+    uc9(["CU-09 Consultar bitácora de auditoría"])
+    uc11(["CU-11 Administrar proveedores y salud"])
+    uc13(["CU-13 Gestionar suscripciones a eventos"])
+    uc2(["CU-02 Autenticar con API key"])
+    uc3(["CU-03 Deduplicar por Idempotency-Key"])
+    uc10(["CU-10 Exportar bitácora a CSV"])
+    uc6(["CU-06 Despachar por canal y proveedor"])
+    uc7(["CU-07 Reintentar con backoff"])
+    uc8(["CU-08 Conmutar a canal secundario (fallback)"])
+    uc14(["CU-14 Notificar cambios de estado"])
+  end
+  tiempo(["⏱ Cola / despachador"])
+  prov(["⚙ Proveedor externo<br/>SendGrid · Twilio · FCM · Webhook"])
+  sub(["⚙ Servicio suscriptor"])
+  app --- uc1
+  app --- uc4
+  ops --- uc4
+  ops --- uc5
+  ops --- uc9
+  ops --- uc12
+  adm --- uc11
+  adm --- uc13
+  uc1 -. "«include»" .-> uc2
+  uc4 -. "«include»" .-> uc2
+  uc3 -. "«extend»" .-> uc1
+  uc10 -. "«extend»" .-> uc9
+  uc1 -. "dispara" .-> uc6
+  uc6 -. "«include»" .-> uc7
+  uc8 -. "«extend»" .-> uc6
+  uc6 -. "«include»" .-> uc14
+  uc6 --- tiempo
+  uc6 --- prov
+  uc14 --- sub
+  classDef uc fill:#eef2ff,stroke:#4f46e5,color:#1e1b4b
+  classDef actor fill:#fff,stroke:#334155,color:#0f172a
+  class uc1,uc2,uc3,uc4,uc5,uc6,uc7,uc8,uc9,uc10,uc11,uc12,uc13,uc14 uc
+  class app,ops,adm,prov,sub,tiempo actor

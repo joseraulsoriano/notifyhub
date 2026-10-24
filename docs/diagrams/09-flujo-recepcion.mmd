@@ -1,0 +1,18 @@
+flowchart TD
+  A([Inicio: POST /v1/notifications]) --> B{¿Trae X-API-Key válida?}
+  B -- No --> B1[/401 Unauthorized/] --> Z([Fin])
+  B -- Sí --> C{¿Dentro del límite de<br/>solicitudes por minuto?}
+  C -- No --> C1[/429 Too Many Requests/] --> Z
+  C -- Sí --> D{¿El cuerpo cumple<br/>el esquema Zod?}
+  D -- No --> D1[/400 con detalle de errores/] --> Z
+  D -- Sí --> E{¿Trae Idempotency-Key?}
+  E -- No --> H
+  E -- Sí --> F{¿Existe una solicitud previa<br/>con esa llave en 24 h?}
+  F -- No --> H
+  F -- Sí --> G{"¿Mismo contenido<br/>(hash de la solicitud)?"}
+  G -- No --> G1[/409 Conflict/] --> Z
+  G -- Sí --> G2[/202 con la notificación previa<br/>marcada como replay/] --> Z
+  H[Persistir en PostgreSQL<br/>estado RECEIVED] --> I[Encolar en Queues<br/>según prioridad alta / media / baja]
+  I --> J{¿Encolado exitoso?}
+  J -- Sí --> K[Transición RECEIVED → QUEUED] --> L[/202 Accepted con id y estado/] --> Z
+  J -- No --> M[Queda en RECEIVED;<br/>el barrido del despachador la recupera] --> L

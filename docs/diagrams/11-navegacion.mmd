@@ -1,0 +1,34 @@
+flowchart TB
+  start([Abrir consola]) --> modo{¿Hay conexión guardada?}
+  modo -- No --> demo[Modo demo<br/>cliente simulado]
+  modo -- Sí --> live[Modo en vivo<br/>API real]
+  demo --> R
+  live --> R
+  subgraph SB["Barra lateral"]
+    direction LR
+    subgraph OP["Operación"]
+      direction TB
+      R["/ · Resumen"]
+      N["/notificaciones · Notificaciones"]
+      NU["/nueva · Nueva solicitud"]
+    end
+    subgraph CF["Configuración"]
+      direction TB
+      P["/proveedores · Proveedores y ruteo"]
+      S["/suscripciones · Suscripciones"]
+    end
+    subgraph CT["Control"]
+      B["/bitacora · Bitácora de auditoría"]
+    end
+  end
+  R -- "Nueva solicitud" --> NU
+  R -- "Ver todas" --> N
+  R -- "clic en fila" --> det[[Panel de detalle<br/>ruta del mensaje: intentos y transbordos]]
+  N -- "seleccionar<br/>(maestro-detalle; Sheet en móvil)" --> det
+  N -- "+ Nueva solicitud" --> NU
+  NU -- "Enviar → 202 → redirige" --> N
+  det -- "?notificationId=…" --> B
+  B -- "Exportar" --> csv[/bitacora.csv/]
+  P -- "cambiar salud" --> salud[[UP · DEGRADED · DOWN<br/>afecta el ruteo en vivo]]
+  SB -- "pie: Conectar" --> conn[[Diálogo «Conectar con la API»<br/>URL + API key]]
+  conn -- "guardar" --> live
