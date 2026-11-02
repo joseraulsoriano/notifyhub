@@ -2,6 +2,7 @@ import type {
   AcceptNotification,
   ClientApp,
   ClientAppRepository,
+  DispatchCapacityRepository,
   GetNotificationStatus,
   ListAuditLog,
   ListNotifications,
@@ -11,6 +12,7 @@ import type {
 } from '@notifyhub/application';
 import { hashApiKey } from '@notifyhub/application';
 import type { AppConfig } from '@notifyhub/shared';
+import { DEFAULT_ROUTING } from '@notifyhub/application';
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
@@ -38,6 +40,7 @@ export interface ApiDeps {
   providers: ListProviders;
   updateProvider: UpdateProvider;
   audit: ListAuditLog;
+  capacity: DispatchCapacityRepository;
 }
 
 export interface OpenedDeps {
@@ -172,6 +175,20 @@ export function createApp<B extends object = object>(open: (c: Context<AppEnv<B>
   v1.get('/providers', async (c) => {
     const items = await c.var.deps.providers.execute();
     return c.json({ items: items.map(providerView) });
+  });
+
+  /** Observabilidad de capacidad global por proveedor; la configuración es de solo lectura. */
+  v1.get('/dispatch/capacity', async (c) => {
+    const snapshot = await c.var.deps.capacity.list(DEFAULT_ROUTING.providerConcurrency);
+    return c.json({
+      observedAt: snapshot.observedAt.toISOString(),
+      providers: snapshot.providers.map((provider) => ({
+        provider: provider.provider,
+        limit: provider.limit,
+        activeCount: provider.activeCount,
+        waitingCount: provider.waitingCount,
+      })),
+    });
   });
 
   /**

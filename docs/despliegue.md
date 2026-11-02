@@ -1,6 +1,8 @@
 # Despliegue en Cloudflare (plan gratuito)
 
 Decisión y razones en [ADR-007](adr/0007-workers-nativo.md).
+Si es tu primer contacto con el repositorio, sigue antes la [guía del proyecto](guia-del-proyecto.md), que prepara
+el entorno local y explica cómo validar el flujo antes de desplegar.
 
 ![Despliegue en Cloudflare](diagrams/render/07-despliegue.png)
 
@@ -46,7 +48,7 @@ Una cola solo admite un consumidor: si ya hay otro Worker consumiendo `notificat
 
 ## Consola web
 
-La consola (`apps/console`) es un sitio estático que se sirve como Worker con activos (plan gratuito), en `https://notifyhub-console.<subdominio>.workers.dev`. No lleva ninguna API key: quien la usa pega la URL y su llave en el diálogo «Conectar» y la llave solo vive en esa pestaña. Sin conexión funciona en modo demo con datos de ejemplo.
+La consola (`apps/console`) es un sitio estático que se sirve como Worker con activos (plan gratuito), en `https://notifyhub-console.<subdominio>.workers.dev`. No lleva ninguna API key: quien la usa pega la URL y su llave en el diálogo «Conectar» y la llave solo vive en esa pestaña. Sin conexión funciona en modo demo en memoria, inicialmente vacío.
 
 ```bash
 # la URL sugerida en el diálogo «Conectar» se fija al compilar
@@ -102,8 +104,13 @@ curl -s -X POST "$URL/v1/notifications" -H "X-API-Key: $KEY" -H "Idempotency-Key
 
 La API key de producción se generó al sembrar Neon y vive solo en el llavero de macOS (`notifyhub-api-key`).
 
-## Local
+## Antes de desplegar
 
-`pnpm infra:up` levanta Postgres; `pnpm dev` corre el Worker con `wrangler dev` en `http://localhost:8787`. Para ver las notificaciones avanzar hasta `DELIVERED` hay que correr la API y el despachador en la misma sesión (ver `apps/dispatcher/README.md`).
-Hyperdrive usa `localConnectionString` de `apps/api/wrangler.jsonc`, y Queues y el Durable Object se simulan en
-local. `tests/e2e/smoke.sh` hace lo mismo en CI.
+Confirma primero el recorrido local de la [guía del proyecto](guia-del-proyecto.md). `pnpm dev` inicia solamente la
+API; para procesar notificaciones hay que ejecutar API y despachador juntos con la configuración de Wrangler de
+ambos. En local, Hyperdrive usa PostgreSQL de Docker Compose y Queues/Durable Objects son simulados. No uses
+`wrangler dev --remote` para una prueba que deba permanecer aislada: ese modo puede acceder a recursos reales.
+
+El despliegue actualiza recursos de la cuenta configurada en Wrangler. Antes de continuar, verifica el account, los
+IDs de Hyperdrive/Queues y el Worker destino; aplica migraciones a la base prevista y despliega API, consumidor y
+consola en el orden indicado arriba. `tests/e2e/smoke.sh` ejecuta la verificación aislada que usa CI.

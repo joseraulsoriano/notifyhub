@@ -15,6 +15,8 @@ import type {
   ClientAppRepository,
   Clock,
   CreateResult,
+  AcquireProviderCapacityInput,
+  DispatchCapacityRepository,
   IdGenerator,
   ListCursor,
   NotificationDetail,
@@ -22,6 +24,8 @@ import type {
   NotificationPage,
   NotificationQueue,
   NotificationRepository,
+  ProviderCapacityLease,
+  ProviderCapacityStatus,
   ProviderPatch,
   ProviderRepository,
   RateLimiter,
@@ -57,11 +61,29 @@ export class InMemoryNotificationRepository implements NotificationRepository {
     if (!item || item.status !== from) throw new Error(`La notificación ${id} no está en ${from}`);
     assertTransition(from, to);
     item.status = to;
+    item.updatedAt = new Date();
     this.history.get(id)?.push({ from, to, occurredAt: new Date() });
   }
 
   async findById(id: string) {
     return this.items.get(id) ?? null;
+  }
+
+  async reclaimStaleDispatch(
+    id: string,
+    status: Extract<NotificationStatus, 'SENDING' | 'RETRYING' | 'FALLBACK'>,
+    staleAfterMs: number,
+  ) {
+    const item = this.items.get(id);
+    if (!item || item.status !== status || Date.now() - item.updatedAt.getTime() <= staleAfterMs) {
+      return false;
+    }
+    item.updatedAt = new Date();
+    return true;
+  }
+
+  async countAttempts(id: string) {
+    return this.attempts.get(id)?.length ?? 0;
   }
 
   async recordAttempt(input: RecordAttemptInput): Promise<DeliveryAttempt> {
@@ -176,6 +198,89 @@ export class InMemoryRateLimiter implements RateLimiter {
       remaining: Math.max(0, limit - count),
       resetSeconds: windowSeconds,
     };
+  }
+}
+
+export class InMemoryDispatchCapacityRepository implements DispatchCapacityRepository {
+  private readonly dispatchClaims = new Map<string, { leaseId: string; expiresAt: number }>();
+  private dispatchLeaseSequence = 0;
+  private readonly leases = new Map<
+    string,
+    { lease: ProviderCapacityLease; notificationId: string; queue: string; since: Date }
+  >();
+  private readonly statusOverrides = new Map<string, ProviderCapacityStatus>();
+
+  setStatus(status: ProviderCapacityStatus) {
+    this.statusOverrides.set(status.provider, status);
+  }
+
+  async acquireDispatch(notificationId: string, leaseMs: number) {
+    const current = this.dispatchClaims.get(notificationId);
+    if (current && current.expiresAt > Date.now()) return null;
+    const leaseId = `dispatch-lease-${++this.dispatchLeaseSequence}`;
+    this.dispatchClaims.set(notificationId, { leaseId, expiresAt: Date.now() + leaseMs });
+    return leaseId;
+  }
+
+  async renewDispatch(leaseId: string, leaseMs: number) {
+    for (const claim of this.dispatchClaims.values()) {
+      if (claim.leaseId === leaseId && claim.expiresAt > Date.now()) {
+        claim.expiresAt = Date.now() + leaseMs;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  async releaseDispatch(leaseId: string) {
+    for (const [notificationId, claim] of this.dispatchClaims) {
+      if (claim.leaseId === leaseId) this.dispatchClaims.delete(notificationId);
+    }
+  }
+
+  async acquire(input: AcquireProviderCapacityInput): Promise<ProviderCapacityLease> {
+    const activeCount = [...this.leases.values()].filter(
+      (item) => item.lease.providerCode === input.providerCode,
+    ).length;
+    if (activeCount >= input.limit) {
+      input.onWaiting?.({ activeCount, waitingCount: 1, limit: input.limit });
+    }
+    const lease = {
+      id: `lease-${this.leases.size + 1}`,
+      providerCode: input.providerCode,
+      activeCount: activeCount + 1,
+      limit: input.limit,
+    };
+    this.leases.set(lease.id, {
+      lease,
+      notificationId: input.notificationId,
+      queue: input.queue,
+      since: new Date(),
+    });
+    return lease;
+  }
+
+  async release(leaseId: string) {
+    this.leases.delete(leaseId);
+  }
+
+  async list(providerLimits: Record<string, number>) {
+    const providers: ProviderCapacityStatus[] = Object.entries(providerLimits)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([provider, limit]) => {
+        const active = [...this.leases.values()]
+          .filter((item) => item.lease.providerCode === provider)
+          .map(({ notificationId, queue, since }) => ({ notificationId, queue, since }));
+        return (
+          this.statusOverrides.get(provider) ?? {
+            provider,
+            limit,
+            activeCount: active.length,
+            waitingCount: 0,
+          }
+        );
+      });
+    return { observedAt: new Date(), providers };
   }
 }
 

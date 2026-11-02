@@ -6,7 +6,11 @@
   "compatibility_date": "2026-10-09",
   // `pg` y `node:crypto` (hash de API keys e idempotencia) necesitan las APIs de Node.
   "compatibility_flags": ["nodejs_compat"],
-  "observability": { "enabled": true },
+  "observability": {
+    "enabled": true,
+    "logs": { "enabled": true, "head_sampling_rate": 1 },
+    "traces": { "enabled": true, "head_sampling_rate": 0.01 },
+  },
 
   // Pool de conexiones hacia Neon. En `wrangler dev` se usa el Postgres de infra/compose.yaml.
   "hyperdrive": [

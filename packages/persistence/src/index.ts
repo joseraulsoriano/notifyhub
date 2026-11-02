@@ -3,3 +3,4 @@ export * from './pg-client-app-repository';
 export * from './pg-notification-repository';
 export * from './pg-provider-repository';
 export * from './pg-audit-log-repository';
+export * from './pg-dispatch-capacity-repository';

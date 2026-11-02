@@ -22,3 +22,20 @@ fallback:
 retry:
   maxAttempts: 3
   backoff: { type: exponential, baseMs: 500, maxMs: 10000, jitter: true }
+
+# Límites de concurrencia globales por proveedor; los aplica el semáforo PostgreSQL compartido
+# por todas las colas y réplicas del despachador. Son configuración de solo lectura.
+providerConcurrency:
+  sendgrid: 3
+  twilio: 2
+  fcm: 5
+  webhook: 2
+
+# El consumidor limita mensajes paralelos por lote. El timeout por solicitud queda debajo del TTL de lease.
+dispatch:
+  batchConcurrency: 3
+  providerSendTimeoutMs: 30000
+  providerLeaseMs: 45000
+  providerWaitTimeoutMs: 120000
+  staleDispatchMs: 120000
+  busyDispatchRetrySeconds: 30

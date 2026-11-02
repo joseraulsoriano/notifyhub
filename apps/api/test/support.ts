@@ -1,5 +1,6 @@
 import {
   InMemoryAuditLogRepository,
+  InMemoryDispatchCapacityRepository,
   InMemoryProviderRepository,
   ListAuditLog,
   ListProviders,
@@ -10,10 +11,12 @@ import {
 export function providerAndAuditDeps(
   providerRepository = new InMemoryProviderRepository(),
   auditRepository = new InMemoryAuditLogRepository(),
+  capacity = new InMemoryDispatchCapacityRepository(),
 ) {
   return {
     providers: new ListProviders(providerRepository),
     updateProvider: new UpdateProvider(providerRepository),
     audit: new ListAuditLog(auditRepository),
+    capacity,
   };
 }

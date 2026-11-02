@@ -26,20 +26,18 @@ function setup() {
 }
 
 describe('cliente de demostración', () => {
-  it('trae datos de ejemplo coherentes: entregadas, fallback, fallidas y en curso', async () => {
+  it('inicia sin notificaciones y mantiene disponible el catálogo de proveedores', async () => {
     const { client } = setup();
     const { items } = await client.notifications.list({ limit: 100 });
-    const status = (s: string) => items.filter((i) => i.status === s).length;
 
-    expect(items).toHaveLength(13);
-    expect(status('DELIVERED')).toBeGreaterThanOrEqual(5);
-    expect(status('FAILED')).toBe(2);
-    expect(items.some((i) => i.usedFallback && i.status === 'DELIVERED')).toBe(true);
-    expect(['QUEUED', 'SENDING', 'RETRYING', 'RECEIVED'].every((s) => status(s) >= 1)).toBe(true);
+    expect(items).toHaveLength(0);
+    expect((await client.auditLog.list()).items).toHaveLength(0);
+    expect(await client.providers.list()).toHaveLength(4);
   });
 
   it('enmascara los datos de contacto igual que la API', async () => {
     const { client } = setup();
+    await client.notifications.create(input({ preferredChannel: 'EMAIL' }));
     const { items } = await client.notifications.list({ limit: 100 });
     const raw = JSON.stringify(items);
     expect(raw).not.toContain('ana.lopez');
@@ -116,25 +114,44 @@ describe('cliente de demostración', () => {
       const again = await client.notifications.create(input(), { idempotencyKey: 'pedido-1' });
       expect(again.replayed).toBe(true);
       expect(again.id).toBe(first.id);
-      expect((await client.notifications.list({ limit: 100 })).items).toHaveLength(14);
+      expect((await client.notifications.list({ limit: 100 })).items).toHaveLength(1);
     });
   });
 
   describe('lista', () => {
     it('filtra por estado, canal, prioridad y texto', async () => {
       const { client } = setup();
+      await client.notifications.create(
+        input({
+          preferredChannel: 'SMS',
+          priority: 'baja',
+          message: { subject: 'Oferta de prueba', body: 'Mensaje de prueba' },
+        }),
+      );
+      await client.notifications.create(
+        input({
+          preferredChannel: 'EMAIL',
+          priority: 'alta',
+          message: { subject: 'Aviso', body: 'Otro mensaje' },
+        }),
+      );
+
       expect(
         (await client.notifications.list({ channel: 'SMS' })).items.every(
           (i) => i.preferredChannel === 'SMS',
         ),
       ).toBe(true);
-      expect((await client.notifications.list({ status: 'FAILED' })).items).toHaveLength(2);
-      expect((await client.notifications.list({ q: 'oferta' })).items.length).toBeGreaterThanOrEqual(1);
+      expect((await client.notifications.list({ priority: 'HIGH' })).items).toHaveLength(1);
+      expect((await client.notifications.list({ status: 'QUEUED' })).items).toHaveLength(2);
+      expect((await client.notifications.list({ q: 'oferta' })).items).toHaveLength(1);
       expect((await client.notifications.list({ q: 'zzz' })).items).toHaveLength(0);
     });
 
     it('ordena de la más reciente a la más antigua y pagina con cursor', async () => {
       const { client } = setup();
+      for (let i = 0; i < 7; i++) {
+        await client.notifications.create(input({ message: { subject: `Aviso ${i}`, body: 'Cuerpo' } }));
+      }
       const first = await client.notifications.list({ limit: 5 });
       expect(first.items).toHaveLength(5);
       expect(first.nextCursor).toBeTruthy();

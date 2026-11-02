@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   DEFAULT_PROVIDERS,
   FixedClock,
+  InMemoryDispatchCapacityRepository,
   InMemoryNotificationRepository,
   InMemoryProviderRepository,
 } from '../testing/in-memory';
@@ -31,6 +32,7 @@ const PERMANENT: DeliveryResult = {
 /** Emisor con respuestas guionadas por proveedor; la última se repite. */
 class ScriptedSender implements NotificationSender {
   calls = 0;
+  readonly idempotencyKeys: string[] = [];
   constructor(
     readonly provider: Provider,
     private readonly script: DeliveryResult[],
@@ -41,7 +43,8 @@ class ScriptedSender implements NotificationSender {
   get channel() {
     return this.provider.channel;
   }
-  async send() {
+  async send(_request: NotificationRequest, idempotencyKey?: string) {
+    if (idempotencyKey) this.idempotencyKeys.push(idempotencyKey);
     const result = this.script[Math.min(this.calls, this.script.length - 1)]!;
     this.calls += 1;
     return result;
@@ -57,6 +60,7 @@ describe('DispatchService', () => {
   let senders: Map<string, ScriptedSender>;
   let sleeps: number[];
   let service: DispatchService;
+  let capacity: InMemoryDispatchCapacityRepository;
 
   const registry = () => {
     const reg = new SenderRegistry();
@@ -80,6 +84,7 @@ describe('DispatchService', () => {
     service = new DispatchService({
       notifications,
       providers,
+      capacity,
       registry: registry(),
       fallback: new FallbackPolicy(DEFAULT_ROUTING.fallback),
       strategyFor: (priority) =>
@@ -133,6 +138,7 @@ describe('DispatchService', () => {
     scripts = {};
     senders = new Map();
     sleeps = [];
+    capacity = new InMemoryDispatchCapacityRepository();
     build();
   });
 
@@ -167,6 +173,16 @@ describe('DispatchService', () => {
       'DELIVERED',
     ]);
     expect(sleeps).toEqual([500, 1000]);
+    expect(senders.get('sendgrid')?.idempotencyKeys).toEqual([
+      `${id}:sendgrid`,
+      `${id}:sendgrid`,
+      `${id}:sendgrid`,
+    ]);
+    expect(
+      (await capacity.list(DEFAULT_ROUTING.providerConcurrency)).providers.find(
+        (provider) => provider.provider === 'sendgrid',
+      )?.activeCount,
+    ).toBe(0);
   });
 
   it('agota los reintentos y pasa al siguiente canal (fallback)', async () => {
@@ -247,6 +263,44 @@ describe('DispatchService', () => {
 
     expect(again).toEqual({ result: 'skipped', attempts: 0 });
     expect(attempts(id)).toHaveLength(1);
+  });
+
+  it('no reclama una notificación mientras otro despacho conserva su lease', async () => {
+    const id = await queued('EMAIL');
+    const owner = await capacity.acquireDispatch(id, DEFAULT_ROUTING.dispatchLeaseMs);
+
+    if (!owner) throw new Error('Expected to acquire dispatch claim');
+    expect(await service.dispatch(id)).toEqual({ result: 'busy', attempts: 0 });
+    expect(attempts(id)).toHaveLength(0);
+
+    await capacity.releaseDispatch(owner);
+    expect(await service.dispatch(id)).toEqual({ result: 'delivered', attempts: 1 });
+    expect(attempts(id)).toHaveLength(1);
+  });
+
+  it('reintenta en vez de omitir un SENDING reciente y recupera uno abandonado', async () => {
+    const id = await queued('EMAIL');
+    const notification = notifications.items.get(id)!;
+    notification.status = 'SENDING';
+    notification.updatedAt = new Date();
+    expect(await service.dispatch(id)).toEqual({ result: 'busy', attempts: 0 });
+    expect(attempts(id)).toHaveLength(0);
+
+    await notifications.recordAttempt({
+      notificationId: id,
+      providerCode: 'sendgrid',
+      channel: 'EMAIL',
+      attemptNumber: 1,
+      isFallback: false,
+      status: 'FAILED',
+      providerMessageId: null,
+      errorCode: 'crash-after-attempt',
+      latencyMs: 1,
+    });
+    notification.updatedAt = new Date('2026-10-12T15:00:00Z');
+    expect(await service.dispatch(id)).toEqual({ result: 'delivered', attempts: 2 });
+    expect(attempts(id)).toHaveLength(2);
+    expect(attempts(id).map((attempt) => attempt.attemptNumber)).toEqual([1, 2]);
   });
 
   it('responde not_found si la notificación no existe', async () => {

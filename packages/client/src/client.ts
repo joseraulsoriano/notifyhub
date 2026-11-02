@@ -9,6 +9,7 @@ import type {
   NotificationListItem,
   NotifyHubClient,
   Page,
+  DispatchCapacitySnapshot,
   Provider,
 } from './types';
 
@@ -128,6 +129,11 @@ export function createNotifyHubClient(options: ClientOptions): NotifyHubClient {
         return (
           await request<Provider>('PATCH', `/v1/providers/${encodeURIComponent(code)}`, { body: patch })
         ).data;
+      },
+    },
+    dispatch: {
+      async capacity() {
+        return (await request<DispatchCapacitySnapshot>('GET', '/v1/dispatch/capacity')).data;
       },
     },
     auditLog: {

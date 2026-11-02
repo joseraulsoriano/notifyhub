@@ -1,4 +1,5 @@
 import type { DeliveryResult, NotificationSender } from '@notifyhub/application';
+import { DEFAULT_ROUTING } from '@notifyhub/application';
 import type { NotificationRequest, Provider } from '@notifyhub/domain';
 import { recipientSupports } from '@notifyhub/domain';
 
@@ -46,14 +47,34 @@ export abstract class BaseSender implements NotificationSender {
     return this.provider.channel;
   }
 
-  async send(request: NotificationRequest): Promise<DeliveryResult> {
+  async send(request: NotificationRequest, idempotencyKey?: string): Promise<DeliveryResult> {
     const problem = this.validate(request);
     if (problem) return { ok: false, retryable: false, errorCode: problem, latencyMs: 0 };
+    const controller = new AbortController();
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
     try {
-      return this.mapResponse(await this.doSend(request));
+      const timeout = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          controller.abort();
+          reject(new Error('PROVIDER_TIMEOUT'));
+        }, DEFAULT_ROUTING.providerSendTimeoutMs);
+      });
+      return this.mapResponse(
+        await Promise.race([this.doSend(request, idempotencyKey, controller.signal), timeout]),
+      );
     } catch {
+      if (controller.signal.aborted) {
+        return {
+          ok: false,
+          retryable: true,
+          errorCode: 'PROVIDER_TIMEOUT',
+          latencyMs: DEFAULT_ROUTING.providerSendTimeoutMs,
+        };
+      }
       // Error de red o excepción del cliente: se trata como transitorio.
       return { ok: false, retryable: true, errorCode: 'NETWORK_ERROR', latencyMs: 0 };
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
     }
   }
 
@@ -62,7 +83,11 @@ export abstract class BaseSender implements NotificationSender {
     return recipientSupports(request.recipient, this.provider.channel) ? null : 'INVALID_RECIPIENT';
   }
 
-  protected abstract doSend(request: NotificationRequest): Promise<ProviderResponse>;
+  protected abstract doSend(
+    request: NotificationRequest,
+    idempotencyKey: string | undefined,
+    signal: AbortSignal,
+  ): Promise<ProviderResponse>;
 
   protected mapResponse(response: ProviderResponse): DeliveryResult {
     if (response.status >= 200 && response.status < 300) {

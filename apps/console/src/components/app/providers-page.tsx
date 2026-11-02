@@ -1,4 +1,10 @@
-import { NotifyHubError, type Channel, type Priority, type ProviderHealth } from '@notifyhub/client';
+import {
+  NotifyHubError,
+  type Channel,
+  type DispatchCapacitySnapshot,
+  type Priority,
+  type ProviderHealth,
+} from '@notifyhub/client';
 import {
   CHANNEL_LABEL,
   ChannelTag,
@@ -9,10 +15,12 @@ import {
 } from '@notifyhub/ui';
 import { Info } from 'lucide-react';
 import { toast } from 'sonner';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { FALLBACK_CHAINS, STRATEGY_BY_PRIORITY } from '@/lib/routing';
 import { useNotifyHubClient } from '@notifyhub/ui';
+import { useConnection } from '@/lib/connection';
 import { FilterSelect } from './filter-select';
 import { Page } from './page';
 import { LoadError, PageHeader } from './page-header';
@@ -33,7 +41,31 @@ export function ProvidersPage() {
 
 function ProvidersView() {
   const client = useNotifyHubClient();
+  const { connection } = useConnection();
   const { data, error, refresh } = useProviders({ intervalMs: 5000 });
+  const [capacity, setCapacity] = useState<DispatchCapacitySnapshot | null>(null);
+  const [capacityError, setCapacityError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const snapshot = await client.dispatch.capacity();
+        if (active) {
+          setCapacity(snapshot);
+          setCapacityError(null);
+        }
+      } catch (e) {
+        if (active) setCapacityError(e instanceof Error ? e.message : 'Error desconocido');
+      }
+    };
+    void load();
+    const timer = window.setInterval(() => void load(), 750);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [client]);
 
   const update = async (code: string, patch: { health?: ProviderHealth; enabled?: boolean }) => {
     try {
@@ -68,6 +100,57 @@ function ProvidersView() {
           Tras tres intentos fallidos pasará a SMS.
         </p>
       </div>
+      <Card className="mb-4">
+        <CardHeader>
+          <CardTitle>Concurrencia del despacho</CardTitle>
+          <CardDescription>
+            Límites globales compartidos por las colas de prioridad. Actividad actualizada cada 750 ms.
+            {connection.mode === 'demo' && ' En modo demo los contadores no representan un Worker real.'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {capacityError ? (
+            <p className="text-sm text-destructive">
+              No se pudo consultar la capacidad: {capacityError}. Verifica que la API local esté conectada y
+              tenga aplicadas sus migraciones.
+            </p>
+          ) : !capacity ? (
+            <p className="text-sm text-muted-foreground">Cargando capacidad…</p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {capacity.providers.map((provider) => (
+                <div key={provider.provider} className="rounded-lg border p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-sm font-semibold">{provider.provider}</span>
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {provider.activeCount}/{provider.limit}
+                    </span>
+                  </div>
+                  <div
+                    className="mt-2 h-2 overflow-hidden rounded-full bg-secondary"
+                    role="progressbar"
+                    aria-label={`Concurrencia de ${provider.provider}`}
+                    aria-valuemin={0}
+                    aria-valuemax={provider.limit}
+                    aria-valuenow={Math.min(provider.activeCount, provider.limit)}
+                  >
+                    <div
+                      className="h-full rounded-full bg-primary transition-[width]"
+                      style={{
+                        width: `${Math.min(100, (provider.activeCount / provider.limit) * 100)}%`,
+                      }}
+                    />
+                  </div>
+                  <div className="mt-2 flex justify-between text-xs text-muted-foreground">
+                    <span>Envíos activos: {provider.activeCount}</span>
+                    <span>En espera: {provider.waitingCount}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
       <div className="grid gap-4 md:grid-cols-2">
         {(data ?? []).map((p) => (
           <Card key={p.code}>

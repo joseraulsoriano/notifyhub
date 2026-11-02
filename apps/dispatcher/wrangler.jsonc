@@ -6,7 +6,11 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-10-09",
   "compatibility_flags": ["nodejs_compat"],
-  "observability": { "enabled": true },
+  "observability": {
+    "enabled": true,
+    "logs": { "enabled": true, "head_sampling_rate": 1 },
+    "traces": { "enabled": true, "head_sampling_rate": 0.01 },
+  },
   // Solo consume colas: no necesita una URL pública.
   "workers_dev": false,
 
@@ -18,12 +22,12 @@
     },
   ],
 
-  // Los lotes se procesan en orden sobre una sola conexión a Postgres: lotes chicos y poca espera.
+  // El consumidor permite una concurrencia local acotada y coordina los límites globales en Postgres.
   "queues": {
     "consumers": [
-      { "queue": "notifications-high", "max_batch_size": 3, "max_batch_timeout": 1, "max_retries": 3 },
-      { "queue": "notifications-medium", "max_batch_size": 3, "max_batch_timeout": 2, "max_retries": 3 },
-      { "queue": "notifications-low", "max_batch_size": 3, "max_batch_timeout": 5, "max_retries": 3 },
+      { "queue": "notifications-high", "max_batch_size": 3, "max_batch_timeout": 1, "max_retries": 20 },
+      { "queue": "notifications-medium", "max_batch_size": 3, "max_batch_timeout": 2, "max_retries": 20 },
+      { "queue": "notifications-low", "max_batch_size": 3, "max_batch_timeout": 5, "max_retries": 20 },
     ],
   },
 

@@ -89,6 +89,18 @@ export interface Provider {
   enabled: boolean;
 }
 
+export interface ProviderCapacity {
+  provider: string;
+  limit: number;
+  activeCount: number;
+  waitingCount: number;
+}
+
+export interface DispatchCapacitySnapshot {
+  observedAt: string;
+  providers: ProviderCapacity[];
+}
+
 export interface AuditEntry {
   id: string;
   notificationId: string;
@@ -147,6 +159,10 @@ export interface NotifyHubClient {
     list(): Promise<Provider[]>;
     /** Requiere un cliente autorizado en el servidor (PROVIDER_ADMIN_CLIENTS). */
     update(code: string, patch: { health?: ProviderHealth; enabled?: boolean }): Promise<Provider>;
+  };
+  dispatch: {
+    /** Capacidad global del consumidor, con actividad limitada a las notificaciones de esta API key. */
+    capacity(): Promise<DispatchCapacitySnapshot>;
   };
   auditLog: {
     list(query?: ListAuditLogQuery): Promise<Page<AuditEntry>>;

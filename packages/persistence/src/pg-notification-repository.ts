@@ -268,6 +268,28 @@ export class PgNotificationRepository implements NotificationRepository {
     return rows[0] ? toDomain(rows[0]) : null;
   }
 
+  async reclaimStaleDispatch(
+    id: string,
+    status: Extract<NotificationStatus, 'SENDING' | 'RETRYING' | 'FALLBACK'>,
+    staleAfterMs: number,
+  ): Promise<boolean> {
+    const { rowCount } = await this.db.query(
+      `UPDATE notification SET updated_at = now()
+       WHERE id = $1 AND status = $2
+         AND updated_at < now() - ($3 * interval '1 millisecond')`,
+      [id, status, staleAfterMs],
+    );
+    return rowCount === 1;
+  }
+
+  async countAttempts(id: string): Promise<number> {
+    const { rows } = await this.db.query<{ count: number }>(
+      `SELECT count(*)::int AS count FROM delivery_attempt WHERE notification_id = $1`,
+      [id],
+    );
+    return rows[0]!.count;
+  }
+
   async recordAttempt(input: RecordAttemptInput): Promise<DeliveryAttempt> {
     return inTransaction(this.db, async () => {
       const { rows } = await this.db.query<{ id: string; attempted_at: Date; status: string }>(

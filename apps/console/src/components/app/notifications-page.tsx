@@ -1,13 +1,19 @@
-import type { NotificationListItem, NotificationStatus } from '@notifyhub/client';
+import type {
+  Channel,
+  CreateNotificationInput,
+  NotificationListItem,
+  NotificationStatus,
+} from '@notifyhub/client';
 import {
   CHANNEL_LABEL,
   NEEDS_ATTENTION,
   NotificationItem,
   PRIORITY_LABEL,
   dayLabel,
+  useNotifyHubClient,
   useNotifications,
 } from '@notifyhub/ui';
-import { BellOff, MousePointerClick, Search } from 'lucide-react';
+import { BellOff, MousePointerClick, Search, Zap } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,10 +21,12 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useConnection } from '@/lib/connection';
 import { FilterSelect } from './filter-select';
 import { NotificationPanel, NotificationSheet } from './notification-panel';
 import { Page } from './page';
 import { LoadError, PageHeader } from './page-header';
+import { toast } from 'sonner';
 
 const ALL = 'all';
 const withAll = (label: string, o: Record<string, string>) => [
@@ -61,6 +69,8 @@ export function NotificationsPage() {
 
 function NotificationsView() {
   const { data, error, loading } = useNotifications({ limit: 100 }, { intervalMs: 3000 });
+  const client = useNotifyHubClient();
+  const { connection } = useConnection();
   const all = data?.items ?? [];
   const desktop = useDesktop();
   const [tab, setTab] = useState('all');
@@ -69,6 +79,45 @@ function NotificationsView() {
   const [pr, setPr] = useState(ALL);
   const [onlyAttention, setOnlyAttention] = useState(false);
   const [sel, setSel] = useState<string | null>(null);
+  const [testChannel, setTestChannel] = useState<Channel>('EMAIL');
+  const [sendingBurst, setSendingBurst] = useState(false);
+  const isLocal =
+    connection.mode === 'live' &&
+    /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(?:\/|$)/.test(connection.baseUrl);
+
+  const sendConcurrencyDemo = async () => {
+    setSendingBurst(true);
+    const batchId = crypto.randomUUID();
+    const recipients: Record<Channel, CreateNotificationInput['recipient']> = {
+      EMAIL: { email: 'concurrency-demo@example.test' },
+      SMS: { phone: '+15555550123' },
+      PUSH: { deviceToken: 'demo-device-token' },
+      WEBHOOK: { webhookUrl: 'https://example.test/hooks/concurrency' },
+    };
+    const results = await Promise.allSettled(
+      Array.from({ length: 6 }, (_, index) =>
+        client.notifications.create(
+          {
+            sender: { name: 'NotifyHub concurrency demo' },
+            recipient: recipients[testChannel],
+            message: {
+              subject: `Prueba concurrente ${index + 1}`,
+              body: `Solicitud ${index + 1} del lote ${batchId}`,
+            },
+            priority: 'media',
+            preferredChannel: testChannel,
+          },
+          { idempotencyKey: `concurrency-${batchId}-${index}` },
+        ),
+      ),
+    );
+    setSendingBurst(false);
+
+    const accepted = results.filter((result) => result.status === 'fulfilled').length;
+    const failed = results.length - accepted;
+    if (failed > 0) toast.error(`Se aceptaron ${accepted} de 6 solicitudes; ${failed} fallaron.`);
+    else toast.success('Se aceptaron 6 solicitudes. Observa su avance en la lista.');
+  };
 
   const base = useMemo(
     () =>
@@ -109,6 +158,27 @@ function NotificationsView() {
       {error && !data && <LoadError error={error} />}
       {!(error && !data) && (
         <>
+          {isLocal && (
+            <Card className="mb-4 flex flex-wrap items-center gap-3 p-4">
+              <div className="min-w-52 flex-1">
+                <h2 className="flex items-center gap-2 text-sm font-semibold">
+                  <Zap className="size-4 text-transfer" />
+                  Prueba de concurrencia
+                </h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Envía 6 solicitudes del mismo canal a la vez; revisa cuáles esperan y cuáles se procesan.
+                </p>
+              </div>
+              <FilterSelect
+                value={testChannel}
+                onChange={(value) => setTestChannel(value as Channel)}
+                options={Object.entries(CHANNEL_LABEL).map(([value, label]) => ({ value, label }))}
+              />
+              <Button onClick={() => void sendConcurrencyDemo()} disabled={sendingBurst}>
+                {sendingBurst ? 'Enviando…' : 'Enviar 6 solicitudes'}
+              </Button>
+            </Card>
+          )}
           <Tabs value={tab} onValueChange={(v) => setTab(v as string)} className="mb-3">
             <TabsList className="h-auto flex-wrap">
               {TABS.map((t) => (

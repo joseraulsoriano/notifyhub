@@ -85,7 +85,7 @@ export function AppSidebar({ path }: { path: string }) {
           {connection.mode === 'live' ? 'Conectado' : 'Modo demo'}
         </div>
         <p className="break-all font-mono text-[11px]">
-          {connection.mode === 'live' ? new URL(connection.baseUrl).host : 'Datos de ejemplo'}
+          {connection.mode === 'live' ? new URL(connection.baseUrl).host : 'Modo demo'}
         </p>
       </SidebarFooter>
     </Sidebar>

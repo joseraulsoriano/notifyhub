@@ -39,6 +39,7 @@ export class SimulatedTransport {
     provider: Provider,
     successBody: Record<string, unknown>,
     messageId: string,
+    signal?: AbortSignal,
   ): Promise<ProviderResponse> {
     const [min, max] = LATENCY[provider.code] ?? [100, 300];
     const between = (a: number, b: number) => Math.round(a + this.random() * (b - a));
@@ -49,7 +50,15 @@ export class SimulatedTransport {
       : provider.health === 'DEGRADED'
         ? between(max * 3, max * 5)
         : between(min, max);
-    await this.sleep(Math.min(latencyMs, this.maxRealDelayMs));
+    if (signal?.aborted) throw new Error('Provider request aborted');
+    await Promise.race([
+      this.sleep(Math.min(latencyMs, this.maxRealDelayMs)),
+      new Promise<never>((_, reject) => {
+        signal?.addEventListener('abort', () => reject(new Error('Provider request aborted')), {
+          once: true,
+        });
+      }),
+    ]);
 
     return failing
       ? { status: 503, body: { error: { code: 503, message: 'UNAVAILABLE' } }, latencyMs }

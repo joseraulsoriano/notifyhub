@@ -13,9 +13,13 @@ export class SendGridEmailSender extends BaseSender {
     super(provider);
   }
 
-  protected doSend(_request: NotificationRequest): Promise<ProviderResponse> {
-    const messageId = id('sg_');
-    return this.transport.call(this.provider, { status: 'accepted' }, messageId);
+  protected doSend(
+    _request: NotificationRequest,
+    idempotencyKey: string | undefined,
+    signal: AbortSignal,
+  ): Promise<ProviderResponse> {
+    const messageId = idempotencyKey ?? id('sg_');
+    return this.transport.call(this.provider, { status: 'accepted' }, messageId, signal);
   }
 }
 
@@ -27,9 +31,13 @@ export class TwilioSmsSender extends BaseSender {
     super(provider);
   }
 
-  protected doSend(_request: NotificationRequest): Promise<ProviderResponse> {
-    const sid = id('SM');
-    return this.transport.call(this.provider, { sid, status: 'queued' }, sid);
+  protected doSend(
+    _request: NotificationRequest,
+    idempotencyKey: string | undefined,
+    signal: AbortSignal,
+  ): Promise<ProviderResponse> {
+    const sid = idempotencyKey ?? id('SM');
+    return this.transport.call(this.provider, { sid, status: 'queued' }, sid, signal);
   }
 }
 
@@ -41,9 +49,14 @@ export class FcmPushSender extends BaseSender {
     super(provider);
   }
 
-  protected doSend(_request: NotificationRequest): Promise<ProviderResponse> {
-    const name = `projects/notifyhub/messages/${id('')}`;
-    return this.transport.call(this.provider, { name }, name);
+  protected doSend(
+    _request: NotificationRequest,
+    idempotencyKey: string | undefined,
+    signal: AbortSignal,
+  ): Promise<ProviderResponse> {
+    const messageId = idempotencyKey ?? id('');
+    const name = `projects/notifyhub/messages/${messageId}`;
+    return this.transport.call(this.provider, { name }, name, signal);
   }
 }
 
@@ -57,7 +70,16 @@ export class WebhookSender extends BaseSender {
     super(provider);
   }
 
-  protected doSend(_request: NotificationRequest): Promise<ProviderResponse> {
-    return this.transport.call(this.provider, { ok: true, signature: 'hmac-sha256' }, id('wh_'));
+  protected doSend(
+    _request: NotificationRequest,
+    idempotencyKey: string | undefined,
+    signal: AbortSignal,
+  ): Promise<ProviderResponse> {
+    return this.transport.call(
+      this.provider,
+      { ok: true, signature: 'hmac-sha256' },
+      idempotencyKey ?? id('wh_'),
+      signal,
+    );
   }
 }

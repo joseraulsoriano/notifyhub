@@ -22,5 +22,6 @@ export type DeliveryResult =
 export interface NotificationSender {
   readonly providerCode: string;
   readonly channel: Channel;
-  send(request: NotificationRequest): Promise<DeliveryResult>;
+  /** Stable per notification/provider so a provider adapter can deduplicate redeliveries. */
+  send(request: NotificationRequest, idempotencyKey?: string): Promise<DeliveryResult>;
 }

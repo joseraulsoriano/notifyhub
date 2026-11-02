@@ -1,5 +1,7 @@
 import type { NotificationRequest, Provider } from '@notifyhub/domain';
-import { describe, expect, it } from 'vitest';
+import { DEFAULT_ROUTING } from '@notifyhub/application';
+import { describe, expect, it, vi } from 'vitest';
+import { BaseSender, type ProviderResponse } from './base-sender';
 import { createDefaultRegistry } from './creators';
 import { SimulatedTransport } from './simulated-transport';
 
@@ -24,6 +26,18 @@ const contact = {
 };
 const instant = (random: () => number = () => 0.9) =>
   new SimulatedTransport({ random, sleep: async () => {} });
+
+class HangingSender extends BaseSender {
+  protected doSend(
+    _request: NotificationRequest,
+    _idempotencyKey: string | undefined,
+    signal: AbortSignal,
+  ): Promise<ProviderResponse> {
+    return new Promise((_, reject) => {
+      signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+    });
+  }
+}
 
 describe('emisores simulados', () => {
   it('un proveedor UP entrega y, salvo el webhook, confirma la entrega', async () => {
@@ -75,6 +89,23 @@ describe('emisores simulados', () => {
     const result = await registry.getSender(provider('twilio', 'SMS')).send(request(contact));
     expect(JSON.stringify(result)).not.toContain('5512345678');
     expect(JSON.stringify(result)).not.toContain('a@b.co');
+  });
+
+  it('cancela solicitudes que exceden el timeout menor que la concesión del proveedor', async () => {
+    vi.useFakeTimers();
+    try {
+      const sender = new HangingSender(provider('sendgrid', 'EMAIL'));
+      const pending = sender.send(request(contact), 'n1:sendgrid');
+      await vi.advanceTimersByTimeAsync(DEFAULT_ROUTING.providerSendTimeoutMs);
+      await expect(pending).resolves.toMatchObject({
+        ok: false,
+        retryable: true,
+        errorCode: 'PROVIDER_TIMEOUT',
+      });
+      expect(DEFAULT_ROUTING.providerSendTimeoutMs).toBeLessThan(DEFAULT_ROUTING.providerLeaseMs);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('el registro tiene los cuatro proveedores del catálogo y falla con uno desconocido', () => {

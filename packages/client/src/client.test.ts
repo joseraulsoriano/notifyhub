@@ -97,6 +97,18 @@ describe('createNotifyHubClient', () => {
     await expect(client.providers.list()).resolves.toEqual([{ code: 'fcm' }]);
   });
 
+  it('consulta los límites globales de concurrencia por proveedor', async () => {
+    const snapshot = {
+      observedAt: '2026-11-01T22:00:00.000Z',
+      providers: [{ provider: 'sendgrid', limit: 3, activeCount: 2, waitingCount: 1 }],
+    };
+    const { client, lastCall } = setup(() => json(snapshot));
+
+    await expect(client.dispatch.capacity()).resolves.toEqual(snapshot);
+    expect(lastCall().url).toBe('https://api.example.dev/v1/dispatch/capacity');
+    expect(lastCall().init.method).toBe('GET');
+  });
+
   describe('errores', () => {
     it('convierte application/problem+json en NotifyHubError', async () => {
       const { client } = setup(() =>

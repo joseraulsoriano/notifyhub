@@ -5,12 +5,12 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "prisma generate && tsc -p tsconfig.json",
-    "typecheck": "prisma generate && tsc -p tsconfig.json --noEmit",
-    "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
-    "db:deploy": "prisma migrate deploy",
-    "db:seed": "node dist/seed.js"
+    "build": "node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js generate && tsc -p tsconfig.json",
+    "typecheck": "node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js generate && tsc -p tsconfig.json --noEmit",
+    "db:generate": "node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js generate",
+    "db:migrate": "node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js migrate dev",
+    "db:deploy": "node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js migrate deploy",
+    "db:seed": "node --env-file-if-exists=../../.env dist/seed.js"
   },
   "dependencies": {
     "@notifyhub/application": "workspace:*",

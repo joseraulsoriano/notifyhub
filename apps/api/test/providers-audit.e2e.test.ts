@@ -5,6 +5,7 @@ import {
   hashApiKey,
   InMemoryAuditLogRepository,
   InMemoryClientAppRepository,
+  InMemoryDispatchCapacityRepository,
   InMemoryNotificationQueue,
   InMemoryNotificationRepository,
   InMemoryProviderRepository,
@@ -37,6 +38,7 @@ describe('proveedores y bitácora', () => {
   let app: ReturnType<typeof createApp>;
   let providers: InMemoryProviderRepository;
   let audit: InMemoryAuditLogRepository;
+  let capacity: InMemoryDispatchCapacityRepository;
 
   const build = (adminClients: string) => {
     const clients = new InMemoryClientAppRepository();
@@ -65,7 +67,7 @@ describe('proveedores y bitácora', () => {
       ),
       getStatus: new GetNotificationStatus(repository),
       list: new ListNotifications(repository),
-      ...providerAndAuditDeps(providers, audit),
+      ...providerAndAuditDeps(providers, audit, capacity),
     };
     app = createApp(async () => ({ deps }));
   };
@@ -73,6 +75,7 @@ describe('proveedores y bitácora', () => {
   beforeEach(() => {
     providers = new InMemoryProviderRepository();
     audit = new InMemoryAuditLogRepository();
+    capacity = new InMemoryDispatchCapacityRepository();
     build('Consola');
   });
 
@@ -96,6 +99,46 @@ describe('proveedores y bitácora', () => {
 
     it('exige API key', async () => {
       expect((await call('/v1/providers', null)).status).toBe(401);
+    });
+  });
+
+  describe('GET /v1/dispatch/capacity', () => {
+    it('informa límites y conteos globales sin exponer IDs de otros clientes', async () => {
+      capacity.setStatus({
+        provider: 'sendgrid',
+        limit: 3,
+        activeCount: 1,
+        waitingCount: 1,
+      });
+
+      const res = await call('/v1/dispatch/capacity');
+      const body = (await res.json()) as {
+        observedAt: string;
+        providers: {
+          provider: string;
+          limit: number;
+          activeCount: number;
+          waitingCount: number;
+        }[];
+      };
+      const sendgrid = body.providers.find((provider) => provider.provider === 'sendgrid')!;
+
+      expect(res.status).toBe(200);
+      expect(body.observedAt).toMatch(/Z$/);
+      expect(body.providers.map((provider) => provider.provider)).toEqual([
+        'fcm',
+        'sendgrid',
+        'twilio',
+        'webhook',
+      ]);
+      expect(sendgrid).toMatchObject({
+        limit: 3,
+        activeCount: 1,
+        waitingCount: 1,
+      });
+      expect(sendgrid).not.toHaveProperty('active');
+      expect(sendgrid).not.toHaveProperty('waiting');
+      expect((await call('/v1/dispatch/capacity', null)).status).toBe(401);
     });
   });
 

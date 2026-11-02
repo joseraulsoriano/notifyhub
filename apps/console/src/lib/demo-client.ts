@@ -4,6 +4,7 @@ import {
   type Channel,
   type CreateNotificationInput,
   type DeliveryAttempt,
+  type DispatchCapacitySnapshot,
   type ListAuditLogQuery,
   type ListNotificationsQuery,
   type NotificationDetail,
@@ -66,16 +67,6 @@ interface Record_ {
   contact: Contact;
   key: string | null;
   steps: Step[];
-}
-
-/** Generador pseudoaleatorio con semilla: los datos de ejemplo salen iguales en cada carga. */
-function seeded(seed: number) {
-  return () => {
-    seed = (seed + 0x6d2b79f5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
 }
 
 const available = (c: Contact): Channel[] =>
@@ -240,158 +231,6 @@ function materialize(rec: Record_, now: number): { item: NotificationListItem; d
   };
 }
 
-const CONTACT = {
-  email: 'ana.lopez@example.com',
-  phone: '+5215512345678',
-  deviceToken: 'fcm:APA91bHe41a0000',
-  webhookUrl: 'https://erp.cliente.mx/hook',
-};
-
-interface Seed {
-  id: string;
-  minutes: number;
-  preferred: Channel;
-  priority: Priority;
-  subject: string;
-  body: string;
-  contact?: Contact;
-  behavior?: Record<string, Behavior>;
-  /** Corta la historia en este estado para mostrar notificaciones todavía en curso. */
-  stopAt?: NotificationStatus;
-  key: string;
-}
-
-const SEEDS: Seed[] = [
-  {
-    id: '7f3a91c2-0000-4000-8000-000000000001',
-    minutes: 1,
-    preferred: 'EMAIL',
-    priority: 'HIGH',
-    subject: 'Tu pedido #4821 va en camino',
-    body: 'Hola Ana, tu pedido salió del almacén y llegará mañana antes de las 14:00.',
-    key: 'pedido-4821-envio',
-  },
-  {
-    id: 'b20e44d1-0000-4000-8000-000000000002',
-    minutes: 2,
-    preferred: 'SMS',
-    priority: 'HIGH',
-    subject: 'Código de verificación',
-    body: 'Tu código es 482913. Vence en 10 minutos.',
-    key: 'otp-93811',
-  },
-  {
-    id: 'c9d40a77-0000-4000-8000-000000000003',
-    minutes: 4,
-    preferred: 'PUSH',
-    priority: 'MEDIUM',
-    subject: 'Oferta de octubre: 20% en tu próxima compra',
-    body: 'Aprovecha el descuento hasta el domingo en toda la tienda.',
-    behavior: { fcm: 'transient' },
-    key: 'promo-oct-112',
-  },
-  {
-    id: '1ad8e502-0000-4000-8000-000000000004',
-    minutes: 6,
-    preferred: 'WEBHOOK',
-    priority: 'MEDIUM',
-    subject: 'Factura INV-2210 emitida',
-    body: 'Evento invoice.created · payload 1.2 KB hacia el ERP.',
-    contact: { webhookUrl: CONTACT.webhookUrl, email: CONTACT.email },
-    key: 'inv-2210',
-  },
-  {
-    id: 'e84b3f10-0000-4000-8000-000000000005',
-    minutes: 7,
-    preferred: 'EMAIL',
-    priority: 'LOW',
-    subject: 'Boletín #41 · Novedades de octubre',
-    body: 'Descubre lo nuevo en la plataforma este mes.',
-    stopAt: 'QUEUED',
-    key: 'newsletter-41',
-  },
-  {
-    id: '05c6b7a9-0000-4000-8000-000000000006',
-    minutes: 8,
-    preferred: 'SMS',
-    priority: 'HIGH',
-    subject: 'Alerta de seguridad: inicio de sesión nuevo',
-    body: 'Detectamos un acceso desde un dispositivo que no reconocemos.',
-    behavior: { twilio: 'transient' },
-    stopAt: 'RETRYING',
-    key: 'alerta-fraude-77',
-  },
-  {
-    id: '92fe6d3c-0000-4000-8000-000000000007',
-    minutes: 12,
-    preferred: 'EMAIL',
-    priority: 'MEDIUM',
-    subject: 'Recibo de pago #8812',
-    body: 'Gracias por tu compra. Adjuntamos tu recibo en PDF.',
-    contact: { email: 'm.perez@example.com', deviceToken: CONTACT.deviceToken },
-    behavior: { sendgrid: 'permanent', fcm: 'permanent' },
-    key: 'recibo-8812',
-  },
-  {
-    id: '3b71aa08-0000-4000-8000-000000000008',
-    minutes: 13,
-    preferred: 'PUSH',
-    priority: 'LOW',
-    subject: 'Recordatorio: tu cita es en 30 minutos',
-    body: 'Te esperamos a las 13:30 en la sucursal Centro.',
-    stopAt: 'SENDING',
-    key: 'recordatorio-30',
-  },
-  {
-    id: 'd0a25e19-0000-4000-8000-000000000009',
-    minutes: 15,
-    preferred: 'EMAIL',
-    priority: 'MEDIUM',
-    subject: 'Bienvenido a NotifyHub',
-    body: 'Tu cuenta está lista. Empieza configurando tus canales.',
-    key: 'bienvenida-501',
-  },
-  {
-    id: 'a6c32b84-0000-4000-8000-000000000010',
-    minutes: 16,
-    preferred: 'SMS',
-    priority: 'LOW',
-    subject: 'Encuesta de satisfacción',
-    body: '¿Cómo fue tu experiencia? Responde en menos de un minuto.',
-    stopAt: 'RECEIVED',
-    key: 'encuesta-90',
-  },
-  {
-    id: 'f1b97c20-0000-4000-8000-000000000011',
-    minutes: 1500,
-    preferred: 'SMS',
-    priority: 'HIGH',
-    subject: 'Pago rechazado: actualiza tu tarjeta',
-    body: 'No pudimos cobrar tu suscripción. Actualiza tu método de pago.',
-    key: 'cobro-rechazado-310',
-  },
-  {
-    id: '8e44d3a1-0000-4000-8000-000000000012',
-    minutes: 1530,
-    preferred: 'EMAIL',
-    priority: 'LOW',
-    subject: 'Resumen semanal de actividad',
-    body: 'Esta semana enviaste 8,412 notificaciones con 98.1% de entrega.',
-    key: 'resumen-semanal-40',
-  },
-  {
-    id: '2c9761fe-0000-4000-8000-000000000013',
-    minutes: 1620,
-    preferred: 'WEBHOOK',
-    priority: 'MEDIUM',
-    subject: 'Evento pedido.cancelado',
-    body: 'Notificación al sistema de inventario sobre el pedido #4790.',
-    contact: { webhookUrl: 'https://inventario.cliente.mx/nh' },
-    behavior: { webhook: 'transient' },
-    key: 'pedido-4790-cancel',
-  },
-];
-
 export interface DemoOptions {
   /** Reloj; para pruebas. */
   now?: () => number;
@@ -401,7 +240,7 @@ export interface DemoOptions {
 
 const STORAGE_KEY = 'notifyhub:demo';
 
-/** Crea el cliente de demostración. Cada llamada empieza con los mismos datos de ejemplo. */
+/** Crea el cliente de demostración. Las notificaciones se agregan al enviarlas. */
 export function createDemoClient(options: DemoOptions = {}): NotifyHubClient {
   const clock = options.now ?? Date.now;
   const records = new Map<string, Record_>();
@@ -433,35 +272,6 @@ export function createDemoClient(options: DemoOptions = {}): NotifyHubClient {
     },
   ];
 
-  const start = clock();
-  for (const [i, s] of SEEDS.entries()) {
-    const createdMs = start - s.minutes * 60_000;
-    const rng = seeded(i + 1);
-    let steps = plan({
-      preferred: s.preferred,
-      contact: s.contact ?? CONTACT,
-      behavior: (p) => s.behavior?.[p] ?? 'ok',
-      rng,
-    });
-    if (s.stopAt) {
-      const cut = steps.findIndex((st) => st.kind === 'status' && st.to === s.stopAt);
-      steps = steps.slice(0, cut + 1);
-    }
-    records.set(s.id, {
-      id: s.id,
-      createdMs,
-      revealStartMs: createdMs - 3_600_000,
-      priority: s.priority,
-      preferred: s.preferred,
-      subject: s.subject,
-      body: s.body,
-      contact: s.contact ?? CONTACT,
-      key: s.key,
-      steps,
-    });
-  }
-
-  const seedIds = new Set(records.keys());
   const storage = options.storage;
   try {
     const saved = JSON.parse(storage?.getItem(STORAGE_KEY) ?? 'null') as {
@@ -477,10 +287,7 @@ export function createDemoClient(options: DemoOptions = {}): NotifyHubClient {
   }
   const persist = () => {
     try {
-      storage?.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ records: [...records.values()].filter((r) => !seedIds.has(r.id)), providers }),
-      );
+      storage?.setItem(STORAGE_KEY, JSON.stringify({ records: [...records.values()], providers }));
     } catch {
       // sin almacenamiento disponible
     }
@@ -541,6 +348,19 @@ export function createDemoClient(options: DemoOptions = {}): NotifyHubClient {
   return {
     async health() {
       return { status: 'ok' };
+    },
+    dispatch: {
+      async capacity(): Promise<DispatchCapacitySnapshot> {
+        return {
+          observedAt: new Date(clock()).toISOString(),
+          providers: [
+            { provider: 'sendgrid', limit: 3, activeCount: 0, waitingCount: 0 },
+            { provider: 'twilio', limit: 2, activeCount: 0, waitingCount: 0 },
+            { provider: 'fcm', limit: 5, activeCount: 0, waitingCount: 0 },
+            { provider: 'webhook', limit: 2, activeCount: 0, waitingCount: 0 },
+          ],
+        };
+      },
     },
     notifications: {
       async create(input: CreateNotificationInput, opts = {}) {

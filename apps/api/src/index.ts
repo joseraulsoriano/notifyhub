@@ -9,6 +9,7 @@ import {
 import {
   PgAuditLogRepository,
   PgClientAppRepository,
+  PgDispatchCapacityRepository,
   PgNotificationRepository,
   PgProviderRepository,
 } from '@notifyhub/persistence';
@@ -48,6 +49,7 @@ export default createApp<Env>(async (c) => {
       providers: new ListProviders(providers),
       updateProvider: new UpdateProvider(providers),
       audit: new ListAuditLog(new PgAuditLogRepository(db)),
+      capacity: new PgDispatchCapacityRepository(db),
     },
     close: () => db.end(),
   };

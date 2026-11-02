@@ -73,24 +73,55 @@ model Notification {
   createdAt        DateTime           @map("created_at") @db.Timestamptz(3)
   updatedAt        DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  clientApp    ClientApp         @relation(fields: [clientAppId], references: [id])
-  attempts     DeliveryAttempt[]
-  auditLog     AuditLog[]
-  outboxEvents OutboxEvent[]
+  clientApp      ClientApp                  @relation(fields: [clientAppId], references: [id])
+  attempts       DeliveryAttempt[]
+  auditLog       AuditLog[]
+  outboxEvents   OutboxEvent[]
+  dispatchLeases ProviderDispatchLease[]
+  dispatchClaim  NotificationDispatchClaim?
 
   @@unique([clientAppId, idempotencyKey])
   @@index([status, createdAt])
   @@map("notification")
 }
 
+model ProviderDispatchLease {
+  leaseId        String    @id @map("lease_id") @db.Uuid
+  queuePosition  BigInt    @unique @default(autoincrement()) @map("queue_position")
+  providerCode   String    @map("provider_code")
+  notificationId String    @map("notification_id") @db.Uuid
+  queueName      String    @map("queue_name")
+  status         String
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  acquiredAt     DateTime? @map("acquired_at") @db.Timestamptz(3)
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(3)
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([providerCode, status, createdAt])
+  @@index([providerCode, status, queuePosition])
+  @@index([expiresAt])
+  @@map("provider_dispatch_lease")
+}
+
+model NotificationDispatchClaim {
+  leaseId        String       @id @map("lease_id") @db.Uuid
+  notificationId String       @unique @map("notification_id") @db.Uuid
+  expiresAt      DateTime     @map("expires_at") @db.Timestamptz(3)
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@map("notification_dispatch_claim")
+}
+
 model Provider {
-  id               String          @id @default(uuid()) @db.Uuid
-  code             String          @unique
+  id               String            @id @default(uuid()) @db.Uuid
+  code             String            @unique
   channel          Channel
-  costPerMessage   Decimal         @map("cost_per_message") @db.Decimal(10, 5)
-  reliabilityScore Int             @map("reliability_score")
-  health           ProviderHealth  @default(UP)
-  enabled          Boolean         @default(true)
+  costPerMessage   Decimal           @map("cost_per_message") @db.Decimal(10, 5)
+  reliabilityScore Int               @map("reliability_score")
+  health           ProviderHealth    @default(UP)
+  enabled          Boolean           @default(true)
   attempts         DeliveryAttempt[]
   routingRules     RoutingRule[]
 

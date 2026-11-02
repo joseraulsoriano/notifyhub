@@ -77,6 +77,14 @@ export interface NotificationRepository {
   findDetail(id: string, clientAppId: string): Promise<NotificationDetail | null>;
   /** Para el despachador, que trabaja sin contexto de cliente. */
   findById(id: string): Promise<NotificationRequest | null>;
+  /** Reclama un SENDING/RETRYING/FALLBACK abandonado y actualiza su actividad de forma atómica. */
+  reclaimStaleDispatch(
+    id: string,
+    status: Extract<NotificationStatus, 'SENDING' | 'RETRYING' | 'FALLBACK'>,
+    staleAfterMs: number,
+  ): Promise<boolean>;
+  /** Cuenta los intentos previos para continuar la numeración tras recuperar un despacho abandonado. */
+  countAttempts(id: string): Promise<number>;
   /** Guarda el intento y su entrada de bitácora en la misma transacción. */
   recordAttempt(input: RecordAttemptInput): Promise<DeliveryAttempt>;
   /** Lista las notificaciones de un cliente, de la más reciente a la más antigua. */

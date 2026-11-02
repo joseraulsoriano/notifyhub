@@ -2,7 +2,7 @@ import { createNotifyHubClient, type NotifyHubClient } from '@notifyhub/client';
 import { useSyncExternalStore } from 'react';
 import { createDemoClient } from './demo-client';
 
-/** A qué backend habla la consola: la API real o el modo demo con datos de ejemplo. */
+/** A qué backend habla la consola: la API real o el modo demo en memoria. */
 export type Connection = { mode: 'demo' } | { mode: 'live'; baseUrl: string; apiKey: string };
 
 const STORAGE_KEY = 'notifyhub:connection';

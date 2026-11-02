@@ -7,6 +7,10 @@ cada intento. Proyecto de Arquitectura de Software construido alrededor de los p
 
 ![ruta de un mensaje: tres intentos en Push y transbordo a SMS](docs/screens/02-notificacion-fallback.png)
 
+**¿Es tu primera vez con el repositorio?** Empieza por la [guía del proyecto](docs/guia-del-proyecto.md): explica
+requisitos, configuración local paso a paso, arquitectura, prueba de concurrencia y despliegue. Esta guía evita
+confundir el modo demo de la consola con la API local o con los recursos de producción.
+
 - **José Raúl Soriano Cazabal**: encargado del proyecto y líder técnico
 - **Andreea Margarita Maldonado Morales**: especialista del proyecto
 - Tablero: [Jira · SCRUM](https://arquitectura-so.atlassian.net/jira/software/projects/SCRUM/boards/1/backlog)
@@ -25,19 +29,23 @@ Detalle por historia en [docs/avance.md](docs/avance.md).
 
 ## Arranque rápido
 
-Requisitos: Node.js 22+, pnpm 11 y Docker (solo para Postgres local).
+Requisitos: Git, Node.js 22+, pnpm 11 y Docker Desktop en ejecución (PostgreSQL local).
 
 ```bash
 pnpm install
 cp .env.example .env
-pnpm infra:up                                    # Postgres, Mailpit, WireMock, Grafana
+pnpm infra:up
 pnpm build
-pnpm --filter @notifyhub/persistence db:deploy   # migraciones
-pnpm db:seed                                     # cliente de desarrollo + proveedores
-pnpm dev                                         # wrangler dev → http://localhost:8787
+pnpm --filter @notifyhub/persistence db:deploy
+pnpm db:seed
 ```
 
-Enviar una notificación:
+Para ver el ciclo completo, abre API y despachador juntos con Wrangler, inicia la consola en otra terminal y
+conéctala a `http://localhost:8787`. Los comandos completos y la configuración inicial están en
+[Guía del proyecto](docs/guia-del-proyecto.md). `pnpm dev` por sí solo levanta la API; no inicia el consumidor de
+Queues ni la consola.
+
+Ya con la API y el consumidor locales ejecutándose, puedes enviar una solicitud:
 
 ```bash
 curl -X POST localhost:8787/v1/notifications \
