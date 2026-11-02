@@ -55,6 +55,7 @@ model ClientApp {
   active          Boolean        @default(true)
   createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
   notifications   Notification[]
+  subscriptions   Subscription[]
 
   @@map("client_app")
 }
@@ -201,13 +202,16 @@ model OutboxEvent {
 
 model Subscription {
   id             String                 @id @default(uuid()) @db.Uuid
+  clientAppId    String?                @map("client_app_id") @db.Uuid
   subscriberName String                 @map("subscriber_name")
   targetUrl      String                 @map("target_url")
   eventTypes     String[]               @map("event_types")
   secretHash     String                 @map("secret_hash")
   active         Boolean                @default(true)
   deliveries     SubscriptionDelivery[]
+  clientApp      ClientApp?             @relation(fields: [clientAppId], references: [id], onDelete: Cascade)
 
+  @@index([clientAppId, subscriberName])
   @@map("subscription")
 }
 

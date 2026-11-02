@@ -95,9 +95,10 @@ function ProvidersView() {
       <div className="mb-4 flex items-start gap-2 rounded-lg border bg-card px-4 py-3 text-sm text-muted-foreground">
         <Info className="mt-0.5 size-4 shrink-0" />
         <p>
-          Para ver el fallback en vivo: marca <b className="text-foreground">fcm</b> como{' '}
+          En esta simulación, marca <b className="text-foreground">fcm</b> como{' '}
           <b className="text-foreground">Caído</b> y manda una notificación por Push desde «Nueva solicitud».
-          Tras tres intentos fallidos pasará a SMS.
+          Se simularán tres fallos y después pasará a SMS. No es una comprobación real del proveedor. Para
+          cambiar salud en modo conectado, la API key necesita permiso en <code>PROVIDER_ADMIN_CLIENTS</code>.
         </p>
       </div>
       <Card className="mb-4">
@@ -196,7 +197,7 @@ function ProvidersView() {
         <CardHeader>
           <CardTitle>Reglas de ruteo</CardTitle>
           <CardDescription>
-            Cadena de fallback por canal y estrategia de selección por prioridad (config/routing.yaml)
+            Valores predeterminados compilados; no se editan desde esta pantalla
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-6 md:grid-cols-2">

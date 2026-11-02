@@ -2,12 +2,15 @@ import type {
   AcceptNotification,
   ClientApp,
   ClientAppRepository,
+  CreateSubscription,
   DispatchCapacityRepository,
   GetNotificationStatus,
   ListAuditLog,
   ListNotifications,
   ListProviders,
+  ListSubscriptions,
   RateLimiter,
+  SetSubscriptionActive,
   UpdateProvider,
 } from '@notifyhub/application';
 import { hashApiKey } from '@notifyhub/application';
@@ -21,12 +24,15 @@ import { auditEntry, detail, listItem, providerView, summary } from './http/pres
 import { httpProblem, toProblem } from './http/problem';
 import {
   CreateNotificationSchema,
+  CreateSubscriptionSchema,
   IdempotencyKeySchema,
   ListAuditLogQuerySchema,
   ListNotificationsQuerySchema,
   NotificationIdSchema,
   ProviderCodeSchema,
+  SubscriptionIdSchema,
   UpdateProviderSchema,
+  UpdateSubscriptionSchema,
 } from './http/schemas';
 
 /** Lo que necesita la capa HTTP. Los casos de uso no conocen Hono ni Cloudflare. */
@@ -41,6 +47,11 @@ export interface ApiDeps {
   updateProvider: UpdateProvider;
   audit: ListAuditLog;
   capacity: DispatchCapacityRepository;
+  subscriptions: {
+    list: ListSubscriptions;
+    create: CreateSubscription;
+    setActive: SetSubscriptionActive;
+  };
 }
 
 export interface OpenedDeps {
@@ -177,6 +188,32 @@ export function createApp<B extends object = object>(open: (c: Context<AppEnv<B>
     return c.json({ items: items.map(providerView) });
   });
 
+  v1.get('/subscriptions', async (c) => {
+    const items = await c.var.deps.subscriptions.list.execute(c.var.clientApp.id);
+    return c.json({ items });
+  });
+
+  v1.post('/subscriptions', async (c) => {
+    const body = await readJson(c);
+    const payload = CreateSubscriptionSchema.parse(body);
+    const signingSecret = createSubscriptionSecret();
+    const subscription = await c.var.deps.subscriptions.create.execute({
+      id: crypto.randomUUID(),
+      clientAppId: c.var.clientApp.id,
+      ...payload,
+      secretHash: hashApiKey(signingSecret),
+    });
+    return c.json({ ...subscription, signingSecret }, 201);
+  });
+
+  v1.patch('/subscriptions/:id', async (c) => {
+    const id = SubscriptionIdSchema.parse(c.req.param('id'));
+    const { active } = UpdateSubscriptionSchema.parse(await readJson(c));
+    const subscription = await c.var.deps.subscriptions.setActive.execute(c.var.clientApp.id, id, active);
+    if (!subscription) throw new HTTPException(404, { message: 'No existe la suscripción' });
+    return c.json(subscription);
+  });
+
   /** Observabilidad de capacidad global por proveedor; la configuración es de solo lectura. */
   v1.get('/dispatch/capacity', async (c) => {
     const snapshot = await c.var.deps.capacity.list(DEFAULT_ROUTING.providerConcurrency);
@@ -224,4 +261,19 @@ export function createApp<B extends object = object>(open: (c: Context<AppEnv<B>
 
   app.route('/v1', v1);
   return app;
+}
+
+function createSubscriptionSecret(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  const encoded = btoa(String.fromCharCode(...bytes))
+    .replaceAll('+', '-')
+    .replaceAll('/', '_')
+    .replace(/=+$/, '');
+  return `nhs_${encoded}`;
+}
+
+async function readJson<B extends object>(c: Context<AppEnv<B>>): Promise<unknown> {
+  return c.req.json().catch(() => {
+    throw new HTTPException(400, { message: 'El cuerpo debe ser JSON válido' });
+  });
 }

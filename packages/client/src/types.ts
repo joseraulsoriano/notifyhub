@@ -20,6 +20,26 @@ export type NotificationStatus = (typeof NOTIFICATION_STATUSES)[number];
 
 export type AttemptStatus = 'SENT' | 'FAILED' | 'RETRYING';
 export type ProviderHealth = 'UP' | 'DEGRADED' | 'DOWN';
+export type SubscriptionEventType = 'notification.status_changed' | 'notification.attempted';
+
+export interface NotificationSubscription {
+  id: string;
+  subscriberName: string;
+  targetUrl: string;
+  eventTypes: SubscriptionEventType[];
+  active: boolean;
+}
+
+export interface CreateSubscriptionInput {
+  subscriberName: string;
+  targetUrl: string;
+  eventTypes: SubscriptionEventType[];
+}
+
+/** El secreto de firma solo se devuelve al crear la suscripción. */
+export interface CreatedSubscription extends NotificationSubscription {
+  signingSecret: string;
+}
 
 /** Estados de los que ya no sale una notificación. */
 export const TERMINAL_STATUSES: readonly NotificationStatus[] = ['SENT', 'DELIVERED', 'FAILED'];
@@ -163,6 +183,11 @@ export interface NotifyHubClient {
   dispatch: {
     /** Capacidad global del consumidor, con actividad limitada a las notificaciones de esta API key. */
     capacity(): Promise<DispatchCapacitySnapshot>;
+  };
+  subscriptions: {
+    list(): Promise<NotificationSubscription[]>;
+    create(input: CreateSubscriptionInput): Promise<CreatedSubscription>;
+    setActive(id: string, active: boolean): Promise<NotificationSubscription>;
   };
   auditLog: {
     list(query?: ListAuditLogQuery): Promise<Page<AuditEntry>>;

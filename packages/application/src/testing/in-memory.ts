@@ -14,6 +14,7 @@ import type {
   ClientApp,
   ClientAppRepository,
   Clock,
+  CreateSubscriptionInput,
   CreateResult,
   AcquireProviderCapacityInput,
   DispatchCapacityRepository,
@@ -24,6 +25,7 @@ import type {
   NotificationPage,
   NotificationQueue,
   NotificationRepository,
+  NotificationSubscription,
   ProviderCapacityLease,
   ProviderCapacityStatus,
   ProviderPatch,
@@ -32,6 +34,7 @@ import type {
   RateLimitResult,
   RecordAttemptInput,
   StatusHistoryEntry,
+  SubscriptionRepository,
 } from '../ports';
 
 /** Implementaciones en memoria de los puertos, para pruebas sin Postgres ni Redis. */
@@ -324,6 +327,48 @@ export class InMemoryProviderRepository implements ProviderRepository {
     this.providers.set(code, next);
     return { ...next };
   }
+}
+
+export class InMemorySubscriptionRepository implements SubscriptionRepository {
+  private readonly subscriptions = new Map<string, NotificationSubscription & { clientAppId: string }>();
+
+  async list(clientAppId: string) {
+    return [...this.subscriptions.values()]
+      .filter((subscription) => subscription.clientAppId === clientAppId)
+      .map(toPublicSubscription);
+  }
+
+  async create(input: CreateSubscriptionInput) {
+    const subscription = {
+      id: input.id,
+      clientAppId: input.clientAppId,
+      subscriberName: input.subscriberName,
+      targetUrl: input.targetUrl,
+      eventTypes: [...input.eventTypes],
+      active: true,
+    };
+    this.subscriptions.set(subscription.id, subscription);
+    return toPublicSubscription(subscription);
+  }
+
+  async setActive(clientAppId: string, id: string, active: boolean) {
+    const subscription = this.subscriptions.get(id);
+    if (!subscription || subscription.clientAppId !== clientAppId) return null;
+    subscription.active = active;
+    return toPublicSubscription(subscription);
+  }
+}
+
+function toPublicSubscription(
+  subscription: NotificationSubscription & { clientAppId: string },
+): NotificationSubscription {
+  return {
+    id: subscription.id,
+    subscriberName: subscription.subscriberName,
+    targetUrl: subscription.targetUrl,
+    eventTypes: [...subscription.eventTypes],
+    active: subscription.active,
+  };
 }
 
 export const DEFAULT_PROVIDERS: Provider[] = [

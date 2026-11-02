@@ -60,9 +60,12 @@ Para que la consola pueda llamar a la API desde el navegador, su origen debe est
 
 ### Orden de despliegue de esta versión
 
-Una cola solo admite un consumidor y el despachador procesa lo que haya en ellas, así que conviene este orden:
+Aplica primero todas las migraciones pendientes (incluyen los leases globales de despacho y el aislamiento de
+suscripciones por cliente). Una cola solo admite un consumidor y el despachador procesa lo que haya en ellas, así
+que después conviene este orden:
 
 ```bash
+pnpm --filter @notifyhub/persistence db:deploy
 pnpm turbo run build
 pnpm --filter @notifyhub/api run deploy          # nuevos endpoints: listado, proveedores y bitácora
 pnpm --filter @notifyhub/dispatcher run deploy   # consume las colas y entrega con proveedores simulados

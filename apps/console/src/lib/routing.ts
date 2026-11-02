@@ -1,6 +1,6 @@
 import type { Channel, Priority } from '@notifyhub/client';
 
-/** Cadenas de fallback y estrategia por prioridad: lo mismo que config/routing.yaml del servidor. */
+/** Espejo de las reglas compiladas del despachador; mantener sincronizado con DEFAULT_ROUTING. */
 export const FALLBACK_CHAINS: Record<Channel, Channel[]> = {
   EMAIL: ['SMS', 'PUSH'],
   SMS: ['PUSH', 'EMAIL'],

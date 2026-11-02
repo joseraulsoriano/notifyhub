@@ -3,6 +3,8 @@ import {
   type AuditEntry,
   type Channel,
   type CreateNotificationInput,
+  type CreateSubscriptionInput,
+  type CreatedSubscription,
   type DeliveryAttempt,
   type DispatchCapacitySnapshot,
   type ListAuditLogQuery,
@@ -10,6 +12,7 @@ import {
   type NotificationDetail,
   type NotificationListItem,
   type NotificationStatus,
+  type NotificationSubscription,
   type NotifyHubClient,
   type Page,
   type Priority,
@@ -271,23 +274,33 @@ export function createDemoClient(options: DemoOptions = {}): NotifyHubClient {
       enabled: true,
     },
   ];
+  const subscriptions = new Map<string, NotificationSubscription>();
 
   const storage = options.storage;
   try {
     const saved = JSON.parse(storage?.getItem(STORAGE_KEY) ?? 'null') as {
       records: Record_[];
       providers: Provider[];
+      subscriptions?: NotificationSubscription[];
     } | null;
     if (saved) {
       for (const r of saved.records) records.set(r.id, r);
       for (const p of saved.providers) Object.assign(providers.find((x) => x.code === p.code) ?? {}, p);
+      for (const subscription of saved.subscriptions ?? []) subscriptions.set(subscription.id, subscription);
     }
   } catch {
     // datos guardados dañados: se ignoran
   }
   const persist = () => {
     try {
-      storage?.setItem(STORAGE_KEY, JSON.stringify({ records: [...records.values()], providers }));
+      storage?.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          records: [...records.values()],
+          providers,
+          subscriptions: [...subscriptions.values()],
+        }),
+      );
     } catch {
       // sin almacenamiento disponible
     }
@@ -442,6 +455,34 @@ export function createDemoClient(options: DemoOptions = {}): NotifyHubClient {
         Object.assign(p, patch);
         persist();
         return { ...p };
+      },
+    },
+    subscriptions: {
+      async list() {
+        return [...subscriptions.values()].map((subscription) => ({
+          ...subscription,
+          eventTypes: [...subscription.eventTypes],
+        }));
+      },
+      async create(input: CreateSubscriptionInput): Promise<CreatedSubscription> {
+        const subscription: NotificationSubscription = {
+          id: crypto.randomUUID(),
+          subscriberName: input.subscriberName,
+          targetUrl: input.targetUrl,
+          eventTypes: [...input.eventTypes],
+          active: true,
+        };
+        subscriptions.set(subscription.id, subscription);
+        persist();
+        return { ...subscription, signingSecret: `demo_${crypto.randomUUID()}` };
+      },
+      async setActive(id: string, active: boolean) {
+        const subscription = subscriptions.get(id);
+        if (!subscription)
+          throw new NotifyHubError({ status: 404, title: 'NOT_FOUND', detail: 'No existe la suscripción' });
+        subscription.active = active;
+        persist();
+        return { ...subscription, eventTypes: [...subscription.eventTypes] };
       },
     },
     auditLog: {

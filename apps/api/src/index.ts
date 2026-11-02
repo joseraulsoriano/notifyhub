@@ -1,9 +1,12 @@
 import {
   AcceptNotification,
+  CreateSubscription,
   GetNotificationStatus,
   ListAuditLog,
   ListNotifications,
   ListProviders,
+  ListSubscriptions,
+  SetSubscriptionActive,
   UpdateProvider,
 } from '@notifyhub/application';
 import {
@@ -12,6 +15,7 @@ import {
   PgDispatchCapacityRepository,
   PgNotificationRepository,
   PgProviderRepository,
+  PgSubscriptionRepository,
 } from '@notifyhub/persistence';
 import { loadConfig } from '@notifyhub/shared';
 import { Client } from 'pg';
@@ -50,6 +54,11 @@ export default createApp<Env>(async (c) => {
       updateProvider: new UpdateProvider(providers),
       audit: new ListAuditLog(new PgAuditLogRepository(db)),
       capacity: new PgDispatchCapacityRepository(db),
+      subscriptions: {
+        list: new ListSubscriptions(new PgSubscriptionRepository(db)),
+        create: new CreateSubscription(new PgSubscriptionRepository(db)),
+        setActive: new SetSubscriptionActive(new PgSubscriptionRepository(db)),
+      },
     },
     close: () => db.end(),
   };

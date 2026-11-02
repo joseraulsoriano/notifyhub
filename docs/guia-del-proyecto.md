@@ -164,17 +164,106 @@ flowchart LR
 El recorrido está desacoplado: la API no espera a que el proveedor termine. La prioridad selecciona una de tres
 colas, mientras el canal preferente y la estrategia seleccionan proveedor/canal durante el despacho.
 
+### Por qué esta arquitectura
+
+Las opciones describen niveles distintos, por eso NotifyHub combina varias en lugar de escoger solo una:
+
+- **Hexagonal, expresada también por capas, para organizar el código.** El dominio no depende de Hono, PostgreSQL
+  ni Cloudflare. Los casos de uso hablan con puertos (`NotificationRepository`, `NotificationQueue`,
+  `DispatchCapacityRepository`) y los paquetes de persistencia/infraestructura los implementan. Así se prueban las
+  reglas con adaptadores en memoria y se puede sustituir una integración sin reescribir el dominio. «Por capas» no
+  es incorrecto; hexagonal precisa la dirección de las dependencias y el papel de los puertos/adaptadores.
+- **Dirigida por eventos para el trabajo asíncrono.** La API acepta y encola; el Worker consumidor trabaja después
+  desde Cloudflare Queues. Esto evita que una petición HTTP tenga que esperar reintentos y respuesta del proveedor,
+  absorbe picos y permite límites/reintentos independientes. Queue entrega al menos una vez, por eso el despacho
+  usa claims de propiedad e idempotencia para evitar procesar simultáneamente la misma notificación.
+- **Workers separados como unidades de despliegue.** API y consumidor escalan/despliegan por separado, pero comparten
+  PostgreSQL y el estado del servicio. «Serverless/distribuida» es una descripción más precisa hoy que afirmar que
+  NotifyHub ya tiene microservicios autónomos con datos y ciclos de vida independientes.
+- **No es una arquitectura de microfrontends.** La consola es una aplicación web única, no varias aplicaciones UI
+  desplegadas por separado.
+
+También se combinan patrones GoF con propósitos concretos: **Strategy** elige el orden de proveedores según
+prioridad; **Factory Method** crea el sender del proveedor; **Observer** desacopla al despachador de los
+consumidores internos de eventos. Los logs Observer están activos, pero el relay durable de outbox a webhooks
+suscritos aún no está implementado.
+
+### Cómo se usa la API
+
+Todas las rutas `/v1/*` requieren `X-API-Key`, tienen límite por cliente y devuelven errores
+`application/problem+json`. La API key identifica al cliente y filtra sus notificaciones y suscripciones. La ruta
+`/health` solo indica que el Worker responde: **no** comprueba base de datos, migraciones, Queue ni proveedores.
+
+| Ruta                                      | Para qué sirve                                                    | Resultado importante                                                       |
+| ----------------------------------------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `POST /v1/notifications`                  | Valida una solicitud, la persiste y la encola según prioridad.    | `202 Accepted` confirma aceptación, no entrega; incluye `id` y `Location`. |
+| `GET /v1/notifications?limit=50&cursor=…` | Lista las notificaciones del cliente, con contactos enmascarados. | Página y cursor siguiente.                                                 |
+| `GET /v1/notifications/{id}`              | Consulta estado, intentos y transiciones del recurso del cliente. | `404` si no existe o pertenece a otro cliente.                             |
+| `GET /v1/providers`                       | Lee el catálogo y su salud desde PostgreSQL.                      | Requiere DB accesible, migraciones y seed.                                 |
+| `PATCH /v1/providers/{code}`              | Cambia salud/habilitación global de un proveedor.                 | Solo clientes incluidos en `PROVIDER_ADMIN_CLIENTS`; si no, `403`.         |
+| `GET /v1/dispatch/capacity`               | Lee límites globales, activos y en espera por proveedor.          | Los límites son de solo lectura y los conteos no incluyen IDs.             |
+| `GET /v1/audit-log`                       | Consulta intentos y cambios de estado del cliente.                | Paginado y con filtros; datos personales enmascarados.                     |
+| `GET/POST /v1/subscriptions`              | Consulta o registra destinos HTTPS y tipos de evento del cliente. | `POST` devuelve un secreto de firma una sola vez.                          |
+| `PATCH /v1/subscriptions/{id}`            | Activa o pausa una configuración de suscripción propia.           | `404` también si el ID pertenece a otro cliente.                           |
+
+Ejemplo para seguir una solicitud:
+
+```bash
+curl -i -X POST http://localhost:8787/v1/notifications \
+  -H 'X-API-Key: nh_dev_local_key' \
+  -H 'Idempotency-Key: demo-local-0002' \
+  -H 'Content-Type: application/json' \
+  -d '{"sender":{"name":"Demo"},"recipient":{"email":"ana@example.com","phone":"+5212221234567"},"message":{"body":"Prueba"},"priority":"alta","preferredChannel":"EMAIL"}'
+curl http://localhost:8787/v1/notifications/ID_DE_LA_RESPUESTA \
+  -H 'X-API-Key: nh_dev_local_key'
+```
+
+Errores comunes: `400` indica JSON/campos inválidos; `401`, API key ausente o inválida; `403`, cliente sin
+permiso administrativo para cambiar proveedor; `404`, recurso inexistente/no propio; `429`, límite excedido (revisa
+`Retry-After`); `500`, fallo interno. En `500`, consulta los logs de `wrangler dev`: si ves `connection attempt
+failed`, arranca Docker/PostgreSQL; si la tabla no existe, aplica `db:deploy` y `db:seed`. La consola no puede
+validar la API key si no puede alcanzar la base donde se guarda su hash.
+
+### Qué significa la salud de un proveedor
+
+**En este proyecto el envío es simulado.** La salud no es un health-check automático de SendGrid, Twilio o Firebase:
+es un estado de demostración editable. `UP` simula HTTP 200; `DEGRADED` simula fallos intermitentes y más latencia;
+`DOWN` simula HTTP 503. Por eso se puede ver el flujo de reintentos/fallback sin credenciales ni envíos reales.
+
+El código común de los adaptadores convierte una respuesta 2xx en éxito; considera 429 y 5xx transitorios, y otros
+códigos como permanentes. Un timeout de 30 s o error de red también es transitorio. Lo registra como intento
+`RETRYING`/`FAILED`, espera con backoff exponencial (500 ms base, máximo 10 s) y reintenta hasta tres veces por
+proveedor. Si se agotan, `DispatchService` pasa al siguiente canal configurado solo si existe el dato de contacto
+requerido; en Push, por ejemplo, puede seguir con SMS y luego Email. Cuando se integre un proveedor real, su
+adaptador HTTP deberá mapear sus códigos/respuestas reales a estas categorías y sus logs/métricas deberán alimentar
+una política de salud; eso todavía no está conectado aquí.
+
+Para que **Proveedores y ruteo** funcione en local:
+
+1. Levanta Docker/PostgreSQL, aplica migraciones y ejecuta el seed (pasos anteriores). `GET /v1/providers` y
+   `/v1/dispatch/capacity` consultan la base; sin conexión la sección no cargará.
+2. Conecta la consola con `http://localhost:8787` y `nh_dev_local_key`.
+3. Para modificar salud, autoriza ese cliente en el Worker local con `PROVIDER_ADMIN_CLIENTS` (la guía de arranque
+   muestra la opción de Wrangler). El permiso es global; en producción autoriza solo IDs de clientes operadores.
+   Si recibes `403`, la API key puede ser válida, pero no tiene ese permiso.
+4. En **Nueva solicitud**, manda Push con `deviceToken` y también teléfono/email de respaldo. Marca FCM como caído,
+   vuelve a enviar y mira **Notificaciones** y **Bitácora**. La prueba falla artificialmente tres veces en FCM y
+   luego intenta SMS. Las reglas visibles no son edición dinámica: el Worker usa los valores compilados en
+   `packages/application/src/dispatch/routing-config.ts`; `config/routing.yaml` y la consola son espejos que deben
+   mantenerse sincronizados. Cambiar solo el YAML no cambia el comportamiento del Worker.
+
 ### Dónde ver los patrones y requisitos
 
-| Concepto                               | Código                                                                                 |
-| -------------------------------------- | -------------------------------------------------------------------------------------- |
-| Factory Method y registro de emisores  | `packages/application/src/dispatch/sender-creator.ts`, `packages/providers/src/`       |
-| Strategy por prioridad                 | `packages/application/src/dispatch/strategies.ts`, `config/routing.yaml`               |
-| Observer y publicación de eventos      | `packages/application/src/dispatch/event-publisher.ts`, `apps/dispatcher/src/index.ts` |
-| Reintentos y fallback                  | `packages/application/src/dispatch/dispatch-service.ts`                                |
-| Recepción, validación y encolado (RF1) | `apps/api/src/app.ts`                                                                  |
-| Adaptadores de datos y Queue           | `apps/api/src/infra/`, `packages/persistence/src/`                                     |
-| Consola                                | `apps/console/src/`                                                                    |
+| Concepto                                             | Código                                                                                 |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Factory Method y registro de emisores                | `packages/application/src/dispatch/sender-creator.ts`, `packages/providers/src/`       |
+| Strategy por prioridad                               | `packages/application/src/dispatch/strategies.ts`, `config/routing.yaml`               |
+| Observer y publicación de eventos                    | `packages/application/src/dispatch/event-publisher.ts`, `apps/dispatcher/src/index.ts` |
+| Registro de suscripciones (sin relay de entrega aún) | `apps/api/src/app.ts`, `packages/persistence/src/pg-subscription-repository.ts`        |
+| Reintentos y fallback                                | `packages/application/src/dispatch/dispatch-service.ts`                                |
+| Recepción, validación y encolado (RF1)               | `apps/api/src/app.ts`                                                                  |
+| Adaptadores de datos y Queue                         | `apps/api/src/infra/`, `packages/persistence/src/`                                     |
+| Consola                                              | `apps/console/src/`                                                                    |
 
 ## 5. Qué cambia al ejecutar en producción
 

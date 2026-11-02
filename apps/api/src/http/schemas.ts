@@ -107,3 +107,28 @@ export const UpdateProviderSchema = z
   .refine((v) => v.health !== undefined || v.enabled !== undefined, 'indica health o enabled');
 
 export const ProviderCodeSchema = z.string().regex(/^[a-z][a-z0-9_-]{1,39}$/, 'código de proveedor inválido');
+
+export const SubscriptionEventTypes = ['notification.status_changed', 'notification.attempted'] as const;
+
+export const CreateSubscriptionSchema = z
+  .object({
+    subscriberName: z.string().trim().min(1).max(120),
+    targetUrl: z
+      .string()
+      .max(2048)
+      .url()
+      .refine((value) => {
+        const url = new URL(value);
+        return url.protocol === 'https:' && !url.username && !url.password;
+      }, 'el webhook debe usar HTTPS y no incluir credenciales en la URL'),
+    eventTypes: z
+      .array(z.enum(SubscriptionEventTypes))
+      .min(1)
+      .max(2)
+      .refine((events) => new Set(events).size === events.length, 'no repitas tipos de evento'),
+  })
+  .strict();
+
+export const SubscriptionIdSchema = z.string().uuid();
+
+export const UpdateSubscriptionSchema = z.object({ active: z.boolean() }).strict();

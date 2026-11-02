@@ -21,6 +21,8 @@ function explain(error: unknown): string {
     if (error.status === 0)
       return 'No se pudo conectar. Revisa la URL y que el origen de esta consola esté en CORS_ALLOWED_ORIGINS de la API.';
     if (error.status === 401) return 'La API key es inválida o fue revocada.';
+    if (error.status >= 500)
+      return 'La API respondió con un error interno. Revisa sus logs y confirma que PostgreSQL esté accesible, migrado y sembrado.';
     if (error.status === 429) return `Demasiadas solicitudes. Espera ${error.retryAfterSeconds ?? 60} s.`;
     return error.detail ?? error.title;
   }

@@ -109,6 +109,33 @@ describe('createNotifyHubClient', () => {
     expect(lastCall().init.method).toBe('GET');
   });
 
+  it('crea y actualiza suscripciones de eventos', async () => {
+    const subscription = {
+      id: '00000000-0000-4000-8000-000000000001',
+      subscriberName: 'ERP',
+      targetUrl: 'https://erp.example.com/events',
+      eventTypes: ['notification.status_changed'],
+      active: true,
+    };
+    const { client, lastCall } = setup(() =>
+      json({ ...subscription, signingSecret: 'nhs_one-time-secret' }, { status: 201 }),
+    );
+
+    await expect(
+      client.subscriptions.create({
+        subscriberName: 'ERP',
+        targetUrl: 'https://erp.example.com/events',
+        eventTypes: ['notification.status_changed'],
+      }),
+    ).resolves.toMatchObject({ ...subscription, signingSecret: 'nhs_one-time-secret' });
+    expect(lastCall().url).toBe('https://api.example.dev/v1/subscriptions');
+    expect(lastCall().init.method).toBe('POST');
+
+    await client.subscriptions.setActive(subscription.id, false);
+    expect(lastCall().url).toBe(`https://api.example.dev/v1/subscriptions/${subscription.id}`);
+    expect(lastCall().init.method).toBe('PATCH');
+  });
+
   describe('errores', () => {
     it('convierte application/problem+json en NotifyHubError', async () => {
       const { client } = setup(() =>

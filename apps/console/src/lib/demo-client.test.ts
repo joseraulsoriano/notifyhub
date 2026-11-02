@@ -35,6 +35,20 @@ describe('cliente de demostración', () => {
     expect(await client.providers.list()).toHaveLength(4);
   });
 
+  it('crea y conserva suscripciones solo en el almacenamiento local de demo', async () => {
+    const { client, make } = setup();
+    const created = await client.subscriptions.create({
+      subscriberName: 'ERP',
+      targetUrl: 'https://erp.example.com/events',
+      eventTypes: ['notification.status_changed'],
+    });
+
+    expect(created.signingSecret).toMatch(/^demo_/);
+    expect((await make().subscriptions.list()).map(({ id }) => id)).toEqual([created.id]);
+    await client.subscriptions.setActive(created.id, false);
+    expect(await make().subscriptions.list()).toMatchObject([{ id: created.id, active: false }]);
+  });
+
   it('enmascara los datos de contacto igual que la API', async () => {
     const { client } = setup();
     await client.notifications.create(input({ preferredChannel: 'EMAIL' }));

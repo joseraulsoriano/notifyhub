@@ -6,3 +6,4 @@ export * from './notification-queue';
 export * from './notification-repository';
 export * from './provider-repository';
 export * from './rate-limiter';
+export * from './subscription-repository';

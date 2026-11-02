@@ -2,11 +2,14 @@ import { NotifyHubError } from './errors';
 import type {
   AuditEntry,
   CreateNotificationInput,
+  CreateSubscriptionInput,
+  CreatedSubscription,
   CreatedNotification,
   ListAuditLogQuery,
   ListNotificationsQuery,
   NotificationDetail,
   NotificationListItem,
+  NotificationSubscription,
   NotifyHubClient,
   Page,
   DispatchCapacitySnapshot,
@@ -134,6 +137,21 @@ export function createNotifyHubClient(options: ClientOptions): NotifyHubClient {
     dispatch: {
       async capacity() {
         return (await request<DispatchCapacitySnapshot>('GET', '/v1/dispatch/capacity')).data;
+      },
+    },
+    subscriptions: {
+      async list() {
+        return (await request<{ items: NotificationSubscription[] }>('GET', '/v1/subscriptions')).data.items;
+      },
+      async create(input: CreateSubscriptionInput) {
+        return (await request<CreatedSubscription>('POST', '/v1/subscriptions', { body: input })).data;
+      },
+      async setActive(id: string, active: boolean) {
+        return (
+          await request<NotificationSubscription>('PATCH', `/v1/subscriptions/${encodeURIComponent(id)}`, {
+            body: { active },
+          })
+        ).data;
       },
     },
     auditLog: {

@@ -138,7 +138,7 @@ packages/
   shared/         configuración validada y nombres de colas
   client/         @notifyhub/client · SDK de TypeScript
   ui/             @notifyhub/ui · componentes React y tokens de diseño
-config/routing.yaml   proveedores, estrategias y cadenas de fallback
+config/routing.yaml   referencia de proveedores/estrategias; runtime en application/src/dispatch/routing-config.ts
 infra/                Docker Compose (Postgres y herramientas), mocks de WireMock
 docs/                 ADRs, diagramas Mermaid, OpenAPI, riesgos y pruebas
 ```
