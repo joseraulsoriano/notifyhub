@@ -22,11 +22,46 @@ const STATUS_TEXT: Record<number, string> = {
   504: 'GATEWAY_TIMEOUT',
 };
 
-/** Claves que nunca se guardan de la respuesta del proveedor (datos personales). */
-const SENSITIVE = new Set(['to', 'email', 'phone', 'recipient', 'token', 'deviceToken', 'body', 'text']);
+/** Claves que nunca se guardan de la respuesta del proveedor (datos personales o credenciales). */
+const SENSITIVE_EXACT = new Set(['to', 'body', 'text', 'secret', 'password', 'authorization']);
+const SENSITIVE_PARTS = [
+  'email',
+  'phone',
+  'recipient',
+  'token',
+  'secret',
+  'password',
+  'authorization',
+  'credential',
+  'apikey',
+  'accesskey',
+];
 
 function sanitize(body: Record<string, unknown>): Record<string, unknown> {
-  return Object.fromEntries(Object.entries(body).filter(([key]) => !SENSITIVE.has(key)));
+  return Object.fromEntries(
+    Object.entries(body)
+      .filter(([key]) => !isSensitiveKey(key))
+      .map(([key, value]) => [key, sanitizeValue(value)]),
+  );
+}
+
+function isSensitiveKey(key: string): boolean {
+  const normalized = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return (
+    SENSITIVE_EXACT.has(normalized) ||
+    normalized.includes('body') ||
+    SENSITIVE_PARTS.some((part) => normalized.includes(part))
+  );
+}
+
+function sanitizeValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sanitizeValue);
+  if (value === null || typeof value !== 'object') return value;
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key]) => !isSensitiveKey(key))
+      .map(([key, nested]) => [key, sanitizeValue(nested)]),
+  );
 }
 
 /**

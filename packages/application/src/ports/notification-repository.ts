@@ -11,6 +11,7 @@ export interface StatusHistoryEntry {
   from: NotificationStatus | null;
   to: NotificationStatus;
   occurredAt: Date;
+  detail?: Record<string, unknown> | undefined;
 }
 
 export interface NotificationDetail {
@@ -71,7 +72,12 @@ export interface NotificationRepository {
   /** Guarda la solicitud en RECEIVED y su primera entrada de bitácora en la misma transacción. */
   createReceived(notification: NotificationRequest): Promise<CreateResult>;
   /** Cambia el estado y registra la transición en la bitácora. */
-  transition(id: string, from: NotificationStatus, to: NotificationStatus): Promise<void>;
+  transition(
+    id: string,
+    from: NotificationStatus,
+    to: NotificationStatus,
+    detail?: Record<string, unknown>,
+  ): Promise<void>;
   /** Libera una llave vencida (más de 24 h) para que el cliente pueda reutilizarla. */
   releaseIdempotencyKey(id: string): Promise<void>;
   findDetail(id: string, clientAppId: string): Promise<NotificationDetail | null>;

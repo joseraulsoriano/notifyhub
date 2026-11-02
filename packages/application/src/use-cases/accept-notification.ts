@@ -63,7 +63,10 @@ export class AcceptNotification {
     const notification = result.notification;
     try {
       await this.queue.enqueue(notification.id, notification.priority);
-      await this.repository.transition(notification.id, 'RECEIVED', 'QUEUED');
+      await this.repository.transition(notification.id, 'RECEIVED', 'QUEUED', {
+        priority: notification.priority,
+        queue: notification.priority,
+      });
       return { notification: { ...notification, status: 'QUEUED' }, replayed: false };
     } catch {
       return { notification, replayed: false };

@@ -14,7 +14,9 @@ import {
   SequentialIds,
   type AuditEntry,
 } from '@notifyhub/application';
-import { beforeEach, describe, expect, it } from 'vitest';
+import type { ClientBase } from 'pg';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { PgAuditLogRepository } from '../../../packages/persistence/src/pg-audit-log-repository';
 import { createApp } from '../src/app';
 import { providerAndAuditDeps } from './support';
 
@@ -48,6 +50,7 @@ describe('proveedores y bitácora', () => {
       rateLimitPerMin: 1000,
       active: true,
     });
+
     clients.add(hashApiKey(USER_KEY), {
       id: 'app-user',
       name: 'Cliente',
@@ -99,6 +102,71 @@ describe('proveedores y bitácora', () => {
 
     it('exige API key', async () => {
       expect((await call('/v1/providers', null)).status).toBe(401);
+    });
+  });
+
+  describe('detalle recuperado de registros históricos', () => {
+    it('reconstruye metadatos de solicitud e intento desde las tablas existentes', async () => {
+      const base = {
+        notification_id: '00000000-0000-4000-8000-000000000001',
+        from_status: null,
+        to_status: 'RECEIVED',
+        channel: 'EMAIL',
+        provider_code: null,
+        detail: null,
+        occurred_at: new Date('2026-10-12T15:00:00Z'),
+        notification_priority: 'HIGH',
+        preferred_channel: 'EMAIL',
+        idempotency_key_provided: true,
+        sender_has_name: true,
+        sender_has_email: false,
+        sender_has_phone: false,
+        recipient_has_email: true,
+        recipient_has_phone: false,
+        recipient_has_device_token: false,
+        recipient_has_webhook_url: false,
+        message_has_subject: true,
+        message_body_length: 25,
+        message_data_field_count: 1,
+        attempt_number: null,
+        attempt_status: null,
+        attempt_is_fallback: null,
+        attempt_error_code: null,
+        attempt_latency_ms: null,
+        attempt_provider_message_id: null,
+      };
+      const rows = [
+        { ...base, id: '1', event_type: 'notification.received' },
+        {
+          ...base,
+          id: '2',
+          event_type: 'delivery.attempt',
+          from_status: 'SENDING',
+          to_status: 'SENDING',
+          provider_code: 'sendgrid',
+          attempt_number: 1,
+          attempt_status: 'FAILED',
+          attempt_is_fallback: false,
+          attempt_error_code: '503 UNAVAILABLE',
+          attempt_latency_ms: 1800,
+        },
+      ];
+      const db = { query: vi.fn().mockResolvedValue({ rows }) } as unknown as ClientBase;
+      const page = await new PgAuditLogRepository(db).list('app-admin', {}, { limit: 20 });
+
+      expect(page.items.find((item) => item.eventType === 'notification.received')?.detail).toMatchObject({
+        priority: 'HIGH',
+        preferredChannel: 'EMAIL',
+        recipientFields: ['email'],
+        message: { hasSubject: true, bodyLength: 25, dataFieldCount: 1 },
+      });
+      expect(page.items.find((item) => item.eventType === 'delivery.attempt')?.detail).toMatchObject({
+        attemptNumber: 1,
+        status: 'FAILED',
+        isFallback: false,
+        errorCode: '503 UNAVAILABLE',
+        latencyMs: 1800,
+      });
     });
   });
 
@@ -211,7 +279,7 @@ describe('proveedores y bitácora', () => {
     });
 
     interface Page {
-      items: { id: string; eventType: string }[];
+      items: { id: string; eventType: string; detail?: Record<string, unknown> | null }[];
       nextCursor: string | null;
     }
     const get = async (query = '', key: string | null = ADMIN_KEY) => {
@@ -231,6 +299,33 @@ describe('proveedores y bitácora', () => {
       expect((await get('?channel=push')).page.items).toHaveLength(1);
       expect((await get('?provider=fcm&status=failed')).page.items).toHaveLength(1);
       expect((await get('?provider=twilio')).page.items).toHaveLength(0);
+    });
+
+    it('incluye los metadatos técnicos del evento en la respuesta', async () => {
+      audit.add(
+        'app-admin',
+        entry(8, {
+          eventType: 'delivery.attempt',
+          channel: 'EMAIL',
+          providerCode: 'sendgrid',
+          detail: {
+            attemptNumber: 2,
+            status: 'RETRYING',
+            errorCode: '503 UNAVAILABLE',
+            latencyMs: 1800,
+            response: { requestId: 'req-123' },
+          },
+        }),
+      );
+
+      const { page } = await get('?notificationId=00000000-0000-4000-8000-000000000001');
+      expect(page.items.find((item) => item.id === '8')?.detail).toEqual({
+        attemptNumber: 2,
+        status: 'RETRYING',
+        errorCode: '503 UNAVAILABLE',
+        latencyMs: 1800,
+        response: { requestId: 'req-123' },
+      });
     });
 
     it('filtra por notificación y por rango de fechas', async () => {

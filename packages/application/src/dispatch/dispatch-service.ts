@@ -70,7 +70,7 @@ export class DispatchService {
     // Objeto (no variable suelta) para que el estado actual se vea desde las funciones internas.
     const track: { state: NotificationStatus } = { state: notification.status };
     const move = async (to: NotificationStatus, detail?: Record<string, unknown>) => {
-      await notifications.transition(notification.id, track.state, to);
+      await notifications.transition(notification.id, track.state, to, detail);
       await this.deps.publisher.publish({
         type: 'notification.status_changed',
         notificationId: notification.id,

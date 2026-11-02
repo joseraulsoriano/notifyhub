@@ -49,7 +49,12 @@ const MAX_ATTEMPTS = 3;
 
 type Behavior = 'ok' | 'transient' | 'permanent';
 type StepBody =
-  | { kind: 'status'; from: NotificationStatus | null; to: NotificationStatus }
+  | {
+      kind: 'status';
+      from: NotificationStatus | null;
+      to: NotificationStatus;
+      detail?: Record<string, unknown>;
+    }
   | { kind: 'attempt'; attempt: Omit<DeliveryAttempt, 'attemptedAt'> };
 type Step = { t: number; reveal: number } & StepBody;
 
@@ -82,7 +87,10 @@ const available = (c: Contact): Channel[] =>
 /** Misma secuencia que el despachador: reintentos con backoff, FALLBACK al siguiente canal y entrega. */
 function plan(o: {
   preferred: Channel;
+  priority: Priority;
   contact: Contact;
+  subject: string | null;
+  bodyLength: number;
   behavior: (provider: string) => Behavior;
   rng: () => number;
 }): Step[] {
@@ -92,13 +100,27 @@ function plan(o: {
   const push = (step: StepBody) =>
     steps.push({ ...step, t, reveal: Math.max(0, steps.length - 1) * REVEAL_MS });
   const between = (a: number, b: number) => Math.round(a + o.rng() * (b - a));
-  const status = (from: NotificationStatus | null, to: NotificationStatus, dt = 5) => {
+  const status = (
+    from: NotificationStatus | null,
+    to: NotificationStatus,
+    dt = 5,
+    detail?: Record<string, unknown>,
+  ) => {
     t += dt;
-    push({ kind: 'status', from, to });
+    push({ kind: 'status', from, to, ...(detail ? { detail } : {}) });
   };
 
-  status(null, 'RECEIVED', 0);
-  status('RECEIVED', 'QUEUED', 12);
+  status(null, 'RECEIVED', 0, {
+    priority: o.priority,
+    preferredChannel: o.preferred,
+    recipientFields: Object.keys(o.contact),
+    message: {
+      hasSubject: Boolean(o.subject),
+      bodyLength: o.bodyLength,
+      dataFieldCount: 0,
+    },
+  });
+  status('RECEIVED', 'QUEUED', 12, { queue: o.priority });
   status('QUEUED', 'SENDING', 290);
   const have = available(o.contact);
   const channels = [o.preferred, ...CHAINS[o.preferred]].filter(
@@ -229,7 +251,12 @@ function materialize(rec: Record_, now: number): { item: NotificationListItem; d
       ...base,
       updatedAt,
       attempts,
-      history: statuses.map((s) => ({ from: s.from, to: s.to, at: iso(s.t) })),
+      history: statuses.map((s) => ({
+        from: s.from,
+        to: s.to,
+        at: iso(s.t),
+        ...(s.detail ? { detail: s.detail } : {}),
+      })),
     },
   };
 }
@@ -323,7 +350,7 @@ export function createDemoClient(options: DemoOptions = {}): NotifyHubClient {
           toStatus: h.to,
           channel: h.from === null ? r.preferred : null,
           providerCode: null,
-          detail: null,
+          detail: h.detail ?? null,
           occurredAt: h.at,
         });
       }
@@ -387,7 +414,10 @@ export function createDemoClient(options: DemoOptions = {}): NotifyHubClient {
         const health = new Map(providers.map((p) => [p.code, p]));
         const steps = plan({
           preferred: input.preferredChannel,
+          priority: PRIORITY[input.priority] ?? 'MEDIUM',
           contact,
+          subject: input.message.subject ?? null,
+          bodyLength: input.message.body.length,
           rng,
           behavior: (code) => {
             const p = health.get(code);

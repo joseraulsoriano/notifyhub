@@ -1,6 +1,7 @@
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import console from 'node:console';
 import { copyFile, access } from 'node:fs/promises';
+import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath, URL } from 'node:url';
 import { join } from 'node:path';
 import process from 'node:process';
@@ -11,6 +12,35 @@ const localEnv = {
   ...process.env,
   DATABASE_URL: 'postgresql://notifyhub:notifyhub@127.0.0.1:5432/notifyhub',
 };
+const wait = (ms) => delay(ms);
+
+function dockerReady() {
+  const result = spawnSync('docker', ['info'], { stdio: 'ignore', timeout: 5000 });
+  return !result.error && result.status === 0;
+}
+
+async function ensureDocker() {
+  if (dockerReady()) return;
+
+  if (process.platform !== 'darwin') {
+    throw new Error('Docker no está disponible. Inicia Docker Desktop y vuelve a ejecutar pnpm demo:local.');
+  }
+
+  console.log('Docker Desktop no está listo; intentando abrirlo y esperando al daemon...');
+  const launch = spawnSync('open', ['-a', 'Docker'], { stdio: 'ignore' });
+  if (launch.error || launch.status !== 0) {
+    throw new Error('No se pudo abrir Docker Desktop. Inícialo manualmente y vuelve a ejecutar el comando.');
+  }
+
+  const deadline = Date.now() + 90_000;
+  while (Date.now() < deadline) {
+    await wait(2000);
+    if (dockerReady()) return;
+  }
+  throw new Error(
+    'Docker Desktop no inició a tiempo. Ábrelo, espera a que esté listo y vuelve a intentarlo.',
+  );
+}
 
 async function exists(path) {
   try {
@@ -38,7 +68,8 @@ async function setup() {
     console.log('Creado .env con los valores de desarrollo local.');
   }
 
-  console.log('\n[1/4] Iniciando PostgreSQL local...');
+  console.log('\n[1/4] Comprobando Docker e iniciando PostgreSQL local...');
+  await ensureDocker();
   await run('docker', [
     'compose',
     '-f',

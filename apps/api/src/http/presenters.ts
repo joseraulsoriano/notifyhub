@@ -28,7 +28,12 @@ export function detail({ notification, attempts, history }: NotificationDetail) 
       latencyMs: a.latencyMs,
       attemptedAt: a.attemptedAt.toISOString(),
     })),
-    history: history.map((h) => ({ from: h.from, to: h.to, at: h.occurredAt.toISOString() })),
+    history: history.map((h) => ({
+      from: h.from,
+      to: h.to,
+      at: h.occurredAt.toISOString(),
+      ...(h.detail ? { detail: h.detail } : {}),
+    })),
   };
 }
 

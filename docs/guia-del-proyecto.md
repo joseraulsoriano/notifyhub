@@ -12,18 +12,18 @@ llevarlo a Cloudflare.
 - Git
 - Node.js 22 o superior
 - pnpm 11
-- Docker Desktop instalado y **en ejecución**
+- Docker Desktop instalado
 
 Comprueba las herramientas desde una terminal:
 
 ```bash
 node --version
 pnpm --version
-docker info
 ```
 
-`docker info` debe poder comunicarse con el daemon. Si falla con «Cannot connect to the Docker daemon», abre Docker
-Desktop y espera a que indique que está listo antes de continuar.
+`pnpm demo:local` intenta abrir Docker Desktop automáticamente en macOS y espera hasta 90 segundos a que el daemon
+esté listo. En otros sistemas, o si macOS no logra abrirlo, inicia Docker Desktop manualmente y vuelve a ejecutar
+el comando.
 
 ## 2. Preparar la base local
 
@@ -36,7 +36,7 @@ pnpm demo:local
 
 `pnpm install` se hace una vez después de clonar o cambiar dependencias. Después, **un solo comando** arranca la
 base, aplica las migraciones, crea el cliente y los proveedores de prueba y levanta API + despachador + consola.
-Necesitas Docker Desktop iniciado y el puerto `5432` libre. Si no existe `.env`, el comando lo crea desde
+Necesitas Docker Desktop instalado y el puerto `5432` libre. Si no existe `.env`, el comando lo crea desde
 `.env.example`. Para que la demo no toque una base remota por error, migrations y seed siempre fuerzan el Postgres
 local del Compose (`127.0.0.1:5432`) y el API key `nh_dev_local_key`, aunque tu `.env` tenga otra `DATABASE_URL`.
 
@@ -58,6 +58,10 @@ Al abrir Astro, pulsa **Conectar** e ingresa:
 
 - URL de API: `http://localhost:8787`
 - API key: `nh_dev_local_key`
+
+La conexión se guarda en `sessionStorage` por pestaña. Si abres otra ventana, conéctala también a esta URL y llave:
+al usar la API local, ambas ventanas consultan las mismas notificaciones de PostgreSQL. En **Modo demo** cada
+pestaña conserva datos de ejemplo independientes y no comparte solicitudes con la API.
 
 La API y el despachador se ejecutan juntos en la misma sesión de Wrangler para compartir las Queues locales. Envía
 una notificación desde **Nueva solicitud** con un canal y prioridad. Debe aparecer primero como `QUEUED` y

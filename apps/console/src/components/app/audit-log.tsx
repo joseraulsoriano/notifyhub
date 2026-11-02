@@ -17,7 +17,8 @@ const UUID = /^[0-9a-f-]{36}$/i;
 const time = (iso: string) => new Date(iso).toLocaleTimeString('es-MX', { hour12: false });
 
 function toCsv(rows: AuditEntry[]): string {
-  const head = ['hora', 'notificacion', 'evento', 'de', 'a', 'canal', 'proveedor'];
+  const head = ['hora', 'notificacion', 'evento', 'de', 'a', 'canal', 'proveedor', 'detalle'];
+  const cell = (value: string) => `"${value.replaceAll('"', '""')}"`;
   const lines = rows.map((r) =>
     [
       r.occurredAt,
@@ -27,7 +28,10 @@ function toCsv(rows: AuditEntry[]): string {
       r.toStatus,
       r.channel ?? '',
       r.providerCode ?? '',
-    ].join(','),
+      JSON.stringify(r.detail ?? {}),
+    ]
+      .map(cell)
+      .join(','),
   );
   return [head.join(','), ...lines].join('\n');
 }
@@ -74,7 +78,7 @@ function AuditView() {
     <>
       <PageHeader
         title="Bitácora de auditoría"
-        description="GET /v1/audit-log · append-only · datos personales enmascarados"
+        description="GET /v1/audit-log · abre «Ver detalle» para revisar solicitud, transiciones y respuesta técnica; sin cuerpo ni contactos en claro."
       >
         <Button variant="outline" onClick={exportCsv} disabled={rows.length === 0}>
           <Download /> Exportar CSV
@@ -114,6 +118,7 @@ function AuditView() {
                   <TableHead>De → A</TableHead>
                   <TableHead>Canal</TableHead>
                   <TableHead>Proveedor</TableHead>
+                  <TableHead>Detalle técnico</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -142,11 +147,23 @@ function AuditView() {
                       )}
                     </TableCell>
                     <TableCell className="font-mono text-xs">{r.providerCode ?? '—'}</TableCell>
+                    <TableCell className="min-w-52">
+                      {r.detail ? (
+                        <details className="text-xs">
+                          <summary className="cursor-pointer font-medium text-primary">Ver detalle</summary>
+                          <pre className="mt-2 max-h-64 max-w-xl overflow-auto whitespace-pre-wrap rounded-md bg-muted p-3 font-mono text-[11px]">
+                            {JSON.stringify(r.detail, null, 2)}
+                          </pre>
+                        </details>
+                      ) : (
+                        <span className="text-muted-foreground">No registrado</span>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
                 {rows.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
                       {loading ? 'Cargando…' : 'Sin entradas para estos filtros'}
                     </TableCell>
                   </TableRow>

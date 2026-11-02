@@ -59,13 +59,18 @@ export class InMemoryNotificationRepository implements NotificationRepository {
     return { created: true, notification };
   }
 
-  async transition(id: string, from: NotificationStatus, to: NotificationStatus) {
+  async transition(
+    id: string,
+    from: NotificationStatus,
+    to: NotificationStatus,
+    detail?: Record<string, unknown>,
+  ) {
     const item = this.items.get(id);
     if (!item || item.status !== from) throw new Error(`La notificación ${id} no está en ${from}`);
     assertTransition(from, to);
     item.status = to;
     item.updatedAt = new Date();
-    this.history.get(id)?.push({ from, to, occurredAt: new Date() });
+    this.history.get(id)?.push({ from, to, occurredAt: new Date(), ...(detail ? { detail } : {}) });
   }
 
   async findById(id: string) {

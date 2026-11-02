@@ -100,9 +100,25 @@ export class PgNotificationRepository implements NotificationRepository {
           ],
         );
         await this.db.query(
-          `INSERT INTO audit_log (notification_id, event_type, to_status, channel, occurred_at)
-           VALUES ($1, 'notification.received', 'RECEIVED', $2, $3)`,
-          [n.id, n.preferredChannel, n.createdAt],
+          `INSERT INTO audit_log (notification_id, event_type, to_status, channel, detail, occurred_at)
+           VALUES ($1, 'notification.received', 'RECEIVED', $2, $3::jsonb, $4)`,
+          [
+            n.id,
+            n.preferredChannel,
+            JSON.stringify({
+              priority: n.priority,
+              preferredChannel: n.preferredChannel,
+              senderFields: Object.keys(n.sender),
+              recipientFields: Object.keys(n.recipient),
+              message: {
+                hasSubject: Boolean(n.message.subject),
+                bodyLength: n.message.body.length,
+                dataFieldCount: Object.keys(n.message.data ?? {}).length,
+              },
+              idempotencyKeyProvided: n.idempotencyKey !== null,
+            }),
+            n.createdAt,
+          ],
         );
         return rows[0]!;
       });
@@ -116,7 +132,12 @@ export class PgNotificationRepository implements NotificationRepository {
     }
   }
 
-  async transition(id: string, from: NotificationStatus, to: NotificationStatus) {
+  async transition(
+    id: string,
+    from: NotificationStatus,
+    to: NotificationStatus,
+    detail?: Record<string, unknown>,
+  ) {
     assertTransition(from, to);
     await inTransaction(this.db, async () => {
       // El filtro por estado de origen evita carreras entre la API y los workers.
@@ -126,9 +147,9 @@ export class PgNotificationRepository implements NotificationRepository {
       );
       if (rowCount === 0) throw new Error(`La notificación ${id} no está en ${from}`);
       await this.db.query(
-        `INSERT INTO audit_log (notification_id, event_type, from_status, to_status)
-         VALUES ($1, 'notification.status_changed', $2, $3)`,
-        [id, from, to],
+        `INSERT INTO audit_log (notification_id, event_type, from_status, to_status, detail)
+         VALUES ($1, 'notification.status_changed', $2, $3, $4::jsonb)`,
+        [id, from, to, detail ? JSON.stringify(detail) : null],
       );
     });
   }
@@ -168,9 +189,10 @@ export class PgNotificationRepository implements NotificationRepository {
       this.db.query<{
         from_status: NotificationStatus | null;
         to_status: NotificationStatus;
+        detail: Record<string, unknown> | null;
         occurred_at: Date;
       }>(
-        `SELECT from_status, to_status, occurred_at FROM audit_log
+        `SELECT from_status, to_status, detail, occurred_at FROM audit_log
          WHERE notification_id = $1 AND event_type LIKE 'notification.%' ORDER BY id`,
         [id],
       ),
@@ -191,7 +213,12 @@ export class PgNotificationRepository implements NotificationRepository {
         latencyMs: a.latency_ms,
         attemptedAt: a.attempted_at,
       })),
-      history: history.rows.map((h) => ({ from: h.from_status, to: h.to_status, occurredAt: h.occurred_at })),
+      history: history.rows.map((h) => ({
+        from: h.from_status,
+        to: h.to_status,
+        occurredAt: h.occurred_at,
+        ...(h.detail ? { detail: h.detail } : {}),
+      })),
     };
   }
 
@@ -329,6 +356,8 @@ export class PgNotificationRepository implements NotificationRepository {
             isFallback: input.isFallback,
             errorCode: input.errorCode,
             latencyMs: input.latencyMs,
+            providerMessageId: input.providerMessageId,
+            response: input.response ?? null,
           }),
         ],
       );

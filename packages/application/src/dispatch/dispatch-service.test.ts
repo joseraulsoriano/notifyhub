@@ -172,6 +172,11 @@ describe('DispatchService', () => {
       'SENT',
       'DELIVERED',
     ]);
+    expect(notifications.history.get(id)?.find((entry) => entry.to === 'RETRYING')?.detail).toMatchObject({
+      provider: 'sendgrid',
+      errorCode: '503 UNAVAILABLE',
+      retry: 1,
+    });
     expect(sleeps).toEqual([500, 1000]);
     expect(senders.get('sendgrid')?.idempotencyKeys).toEqual([
       `${id}:sendgrid`,

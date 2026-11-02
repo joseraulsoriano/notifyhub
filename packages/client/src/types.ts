@@ -97,7 +97,12 @@ export interface DeliveryAttempt {
 export interface NotificationDetail extends NotificationSummary {
   updatedAt: string;
   attempts: DeliveryAttempt[];
-  history: { from: NotificationStatus | null; to: NotificationStatus; at: string }[];
+  history: {
+    from: NotificationStatus | null;
+    to: NotificationStatus;
+    at: string;
+    detail?: Record<string, unknown>;
+  }[];
 }
 
 export interface Provider {

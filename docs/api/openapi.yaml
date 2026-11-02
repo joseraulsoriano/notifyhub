@@ -578,7 +578,7 @@ components:
         detail:
           {
             type: [object, 'null'],
-            description: Respuesta del proveedor sanitizada (datos personales enmascarados),
+            description: 'Metadatos de solicitud, transición o intento. No incluye el cuerpo ni contactos en claro; la respuesta del proveedor está sanitizada.',
           }
         occurredAt: { type: string, format: date-time }
 

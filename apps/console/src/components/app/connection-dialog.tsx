@@ -69,7 +69,7 @@ function ConnectionDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
           <DialogDescription>
             {connection.mode === 'live'
               ? `Conectado a ${new URL(connection.baseUrl).host}.`
-              : 'Ahora ves datos de ejemplo. Conecta tu API de NotifyHub para ver notificaciones reales.'}
+              : 'Ahora ves datos de ejemplo, independientes en esta pestaña. Conecta la API para consultar datos compartidos.'}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={connect} className="grid gap-4">
@@ -98,7 +98,8 @@ function ConnectionDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
               className="font-mono text-xs"
             />
             <p className="text-xs text-muted-foreground">
-              Se guarda solo en esta pestaña y se borra al cerrarla. No se envía a ningún otro sitio.
+              Se guarda solo en esta pestaña y se borra al cerrarla. Para usar otra ventana, conecta la API
+              ahí también.
             </p>
           </div>
           {error && (

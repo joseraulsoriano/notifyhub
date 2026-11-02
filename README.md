@@ -29,7 +29,8 @@ Detalle por historia en [docs/avance.md](docs/avance.md).
 
 ## Arranque rápido
 
-Requisitos: Git, Node.js 22+, pnpm 11 y Docker Desktop en ejecución (PostgreSQL local).
+Requisitos: Git, Node.js 22+, pnpm 11 y Docker Desktop instalado. En macOS, el comando intenta abrir Docker
+Desktop por ti.
 
 ```bash
 pnpm install
@@ -37,9 +38,10 @@ pnpm demo:local
 ```
 
 El segundo comando levanta PostgreSQL, prepara la base y arranca API, despachador y consola juntos. Conecta la
-consola a `http://localhost:8787` con la llave `nh_dev_local_key`. Requiere Docker Desktop en ejecución. La guía
-explica el recorrido local y la arquitectura en [Guía del proyecto](docs/guia-del-proyecto.md). `pnpm dev` sigue
-siendo solo el servidor API.
+consola a `http://localhost:8787` con la llave `nh_dev_local_key`. Para usar otra ventana del navegador, conecta
+esa ventana también; cada pestaña guarda su conexión por separado, pero las notificaciones de la API local sí se
+comparten en PostgreSQL. El modo demo es independiente por pestaña. La guía explica el recorrido local y la
+arquitectura en [Guía del proyecto](docs/guia-del-proyecto.md). `pnpm dev` sigue siendo solo el servidor API.
 
 Ya con la API y el consumidor locales ejecutándose, puedes enviar una solicitud:
 

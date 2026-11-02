@@ -193,6 +193,18 @@ describe('cliente de demostración', () => {
     const events = own.items.map((e) => e.eventType);
     expect(events).toContain('notification.received');
     expect(events.filter((e) => e === 'delivery.attempt')).toHaveLength(4);
+    expect(own.items.find((e) => e.eventType === 'notification.received')?.detail).toMatchObject({
+      priority: 'HIGH',
+      preferredChannel: 'PUSH',
+      recipientFields: ['email', 'phone', 'deviceToken'],
+      message: { hasSubject: true, bodyLength: 6, dataFieldCount: 0 },
+    });
+    expect(own.items.find((e) => e.eventType === 'delivery.attempt')?.detail).toMatchObject({
+      attemptNumber: expect.any(Number),
+      status: expect.any(String),
+      isFallback: expect.any(Boolean),
+      latencyMs: expect.any(Number),
+    });
     expect(
       (await client.auditLog.list({ provider: 'fcm', status: 'FAILED' })).items.length,
     ).toBeGreaterThanOrEqual(1);

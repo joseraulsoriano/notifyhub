@@ -91,6 +91,36 @@ describe('emisores simulados', () => {
     expect(JSON.stringify(result)).not.toContain('a@b.co');
   });
 
+  it('elimina datos personales y credenciales anidados aunque cambie el uso de mayúsculas', async () => {
+    class ResponseSender extends BaseSender {
+      protected async doSend(): Promise<ProviderResponse> {
+        return {
+          status: 200,
+          latencyMs: 1,
+          body: {
+            requestId: 'req-1',
+            context: { correlationId: 'ctx-1' },
+            Details: {
+              RecipientEmail: 'ana@example.com',
+              access_token: 'secret-value',
+              apiSecret: 'secret-2',
+              accepted: true,
+            },
+          },
+        };
+      }
+    }
+
+    const result = await new ResponseSender(provider('sendgrid', 'EMAIL')).send(request(contact));
+    expect(result).toMatchObject({
+      ok: true,
+      response: { requestId: 'req-1', context: { correlationId: 'ctx-1' }, Details: { accepted: true } },
+    });
+    expect(JSON.stringify(result)).not.toContain('ana@example.com');
+    expect(JSON.stringify(result)).not.toContain('secret-value');
+    expect(JSON.stringify(result)).not.toContain('secret-2');
+  });
+
   it('cancela solicitudes que exceden el timeout menor que la concesión del proveedor', async () => {
     vi.useFakeTimers();
     try {
