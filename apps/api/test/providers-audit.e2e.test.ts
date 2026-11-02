@@ -127,7 +127,7 @@ describe('proveedores y bitácora', () => {
         recipient_has_webhook_url: false,
         message_has_subject: true,
         message_body_length: 25,
-        message_data_field_count: 1,
+        message_data: { customField: 'valor' },
         attempt_number: null,
         attempt_status: null,
         attempt_is_fallback: null,

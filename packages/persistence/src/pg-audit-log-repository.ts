@@ -29,7 +29,7 @@ interface AuditRow {
   recipient_has_webhook_url: boolean;
   message_has_subject: boolean;
   message_body_length: number | null;
-  message_data_field_count: number;
+  message_data: Record<string, unknown> | null;
   attempt_number: number | null;
   attempt_status: string | null;
   attempt_is_fallback: boolean | null;
@@ -59,7 +59,7 @@ function detailsFor(row: AuditRow): Record<string, unknown> | null {
         message: {
           hasSubject: row.message_has_subject,
           bodyLength: row.message_body_length,
-          dataFieldCount: row.message_data_field_count,
+          dataFieldCount: Object.keys(row.message_data ?? {}).length,
         },
       }
     );
@@ -118,7 +118,7 @@ export class PgAuditLogRepository implements AuditLogRepository {
               n.recipient ? 'webhookUrl' AS recipient_has_webhook_url,
               n.message ? 'subject' AS message_has_subject,
               length(n.message->>'body') AS message_body_length,
-              jsonb_object_length(COALESCE(n.message->'data', '{}'::jsonb)) AS message_data_field_count,
+              n.message->'data' AS message_data,
               d.attempt_number, d.status::text AS attempt_status, d.is_fallback AS attempt_is_fallback,
               d.error_code AS attempt_error_code, d.latency_ms AS attempt_latency_ms,
               d.provider_message_id AS attempt_provider_message_id
