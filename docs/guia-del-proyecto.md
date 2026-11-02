@@ -31,27 +31,22 @@ Desde la raíz del repositorio:
 
 ```bash
 pnpm install
-cp .env.example .env
-pnpm infra:up
-pnpm build
-pnpm --filter @notifyhub/persistence db:deploy
-pnpm db:seed
+pnpm demo:local
 ```
 
-El `.env.example` configura PostgreSQL local en `localhost:5432` y una llave de desarrollo. No pongas credenciales de
-producción en este archivo. Si ya existe tu `.env`, consérvalo y comprueba que `DATABASE_URL` apunte al Postgres local.
-Espera a que Docker termine de iniciar los contenedores antes de compilar, aplicar migraciones y sembrar el catálogo.
+`pnpm install` se hace una vez después de clonar o cambiar dependencias. Después, **un solo comando** arranca la
+base, aplica las migraciones, crea el cliente y los proveedores de prueba y levanta API + despachador + consola.
+Necesitas Docker Desktop iniciado y el puerto `5432` libre. Si no existe `.env`, el comando lo crea desde
+`.env.example`. Para que la demo no toque una base remota por error, migrations y seed siempre fuerzan el Postgres
+local del Compose (`127.0.0.1:5432`) y el API key `nh_dev_local_key`, aunque tu `.env` tenga otra `DATABASE_URL`.
 
 Las migraciones crean las tablas; el seed agrega el cliente local (`nh_dev_local_key`) y el catálogo de proveedores.
 El seed **no** crea notificaciones de ejemplo: al abrir la consola, la lista está vacía hasta que envíes una solicitud.
 
-Para comprobar los servicios:
-
-```bash
-docker compose -f infra/compose.yaml ps
-```
-
-Si cambias el esquema, vuelve a aplicar la migración correspondiente. Para apagar el entorno al terminar:
+El comando anuncia la URL de Astro y deja disponible la API en `http://localhost:8787`. Conecta la consola con la
+API key `nh_dev_local_key`; en esta ejecución local, también autoriza cambiar la salud simulada de proveedores.
+Presiona `Ctrl+C` para detener la consola y los Workers. PostgreSQL queda activo para que la base local persista
+entre demostraciones. Para detenerla también:
 
 ```bash
 pnpm infra:down
@@ -59,33 +54,13 @@ pnpm infra:down
 
 ## 3. Arrancar y probar el flujo local
 
-Abre dos terminales en la raíz del repositorio.
-
-**Terminal 1 — API y despachador** (misma sesión local para que compartan las Queues simuladas):
-
-```bash
-cd apps/api
-pnpm exec wrangler dev -c wrangler.jsonc -c ../dispatcher/wrangler.jsonc --port 8787
-```
-
-El proceso debe anunciar que escucha en `http://localhost:8787`. La consola Wrangler muestra las colas locales y el
-Worker despachador que las consume. Para probar cambios de salud de proveedores desde la consola, agrega
-`--var "PROVIDER_ADMIN_CLIENTS:*"` al comando; es un permiso de desarrollo, no lo copies a producción sin decidir
-quién debe administrar proveedores.
-
-**Terminal 2 — consola web:**
-
-```bash
-pnpm --filter @notifyhub/console dev
-```
-
-Abre la URL que Astro imprima (normalmente `http://localhost:4321`; si ese puerto está ocupado puede usar `4322`).
-El modo demo funciona sin servidor y empieza vacío. Para probar el backend, abre **Conectar** e ingresa:
+Al abrir Astro, pulsa **Conectar** e ingresa:
 
 - URL de API: `http://localhost:8787`
 - API key: `nh_dev_local_key`
 
-Envía una notificación desde **Nueva solicitud** con un canal y prioridad. Debe aparecer primero como `QUEUED` y
+La API y el despachador se ejecutan juntos en la misma sesión de Wrangler para compartir las Queues locales. Envía
+una notificación desde **Nueva solicitud** con un canal y prioridad. Debe aparecer primero como `QUEUED` y
 después recorrer el despacho y la bitácora hasta `DELIVERED` o el resultado correspondiente. Revisa **Notificaciones**,
 **Bitácora** y **Proveedores y ruteo** para ver la misma operación desde distintas perspectivas.
 
@@ -240,13 +215,10 @@ una política de salud; eso todavía no está conectado aquí.
 
 Para que **Proveedores y ruteo** funcione en local:
 
-1. Levanta Docker/PostgreSQL, aplica migraciones y ejecuta el seed (pasos anteriores). `GET /v1/providers` y
-   `/v1/dispatch/capacity` consultan la base; sin conexión la sección no cargará.
-2. Conecta la consola con `http://localhost:8787` y `nh_dev_local_key`.
-3. Para modificar salud, autoriza ese cliente en el Worker local con `PROVIDER_ADMIN_CLIENTS` (la guía de arranque
-   muestra la opción de Wrangler). El permiso es global; en producción autoriza solo IDs de clientes operadores.
-   Si recibes `403`, la API key puede ser válida, pero no tiene ese permiso.
-4. En **Nueva solicitud**, manda Push con `deviceToken` y también teléfono/email de respaldo. Marca FCM como caído,
+1. El comando `pnpm demo:local` ya arranca PostgreSQL, migra y siembra la base. `GET /v1/providers` y
+   `/v1/dispatch/capacity` consultan esa base.
+2. La demo habilita el control de salud únicamente en el Worker local. No copies ese permiso abierto a producción.
+3. En **Nueva solicitud**, manda Push con `deviceToken` y también teléfono/email de respaldo. Marca FCM como caído,
    vuelve a enviar y mira **Notificaciones** y **Bitácora**. La prueba falla artificialmente tres veces en FCM y
    luego intenta SMS. Las reglas visibles no son edición dinámica: el Worker usa los valores compilados en
    `packages/application/src/dispatch/routing-config.ts`; `config/routing.yaml` y la consola son espejos que deben

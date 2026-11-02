@@ -33,17 +33,13 @@ Requisitos: Git, Node.js 22+, pnpm 11 y Docker Desktop en ejecución (PostgreSQL
 
 ```bash
 pnpm install
-cp .env.example .env
-pnpm infra:up
-pnpm build
-pnpm --filter @notifyhub/persistence db:deploy
-pnpm db:seed
+pnpm demo:local
 ```
 
-Para ver el ciclo completo, abre API y despachador juntos con Wrangler, inicia la consola en otra terminal y
-conéctala a `http://localhost:8787`. Los comandos completos y la configuración inicial están en
-[Guía del proyecto](docs/guia-del-proyecto.md). `pnpm dev` por sí solo levanta la API; no inicia el consumidor de
-Queues ni la consola.
+El segundo comando levanta PostgreSQL, prepara la base y arranca API, despachador y consola juntos. Conecta la
+consola a `http://localhost:8787` con la llave `nh_dev_local_key`. Requiere Docker Desktop en ejecución. La guía
+explica el recorrido local y la arquitectura en [Guía del proyecto](docs/guia-del-proyecto.md). `pnpm dev` sigue
+siendo solo el servidor API.
 
 Ya con la API y el consumidor locales ejecutándose, puedes enviar una solicitud:
 
@@ -66,16 +62,9 @@ curl localhost:8787/v1/notifications/<id> -H 'X-API-Key: nh_dev_local_key'
 
 ### Ver una notificación avanzar hasta entregarse
 
-La API y el despachador comparten las colas locales cuando corren en la misma sesión de `wrangler dev`:
-
-```bash
-cd apps/api && npx wrangler dev -c wrangler.jsonc -c ../dispatcher/wrangler.jsonc --port 8787
-# en otra terminal, la consola web en http://localhost:4321
-pnpm --filter @notifyhub/console dev
-```
-
-En la consola pulsa **Conectar** y usa `http://localhost:8787` con la llave `nh_dev_local_key`. Para ver el fallback en vivo,
-marca `fcm` como **Caído** en «Proveedores y ruteo» (requiere `--var "PROVIDER_ADMIN_CLIENTS:*"` en `wrangler dev`) y envía una
+Con `pnpm demo:local` ejecutándose, la consola y los Workers comparten las Queues locales. En la consola pulsa
+**Conectar** y usa `http://localhost:8787` con la llave `nh_dev_local_key`. Para ver el fallback en vivo, marca
+`fcm` como **Caído** en «Proveedores y ruteo» y envía una
 notificación por Push: tres intentos `503`, transbordo a SMS y entrega.
 
 El contrato completo está en [docs/api/openapi.yaml](docs/api/openapi.yaml). La API corre en Cloudflare Workers
