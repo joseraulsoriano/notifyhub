@@ -11,6 +11,7 @@
 - [ADRs](adr/README.md): decisiones técnicas y alternativas.
 - [Diagramas](diagrams/): contexto, contenedores, clases, secuencia de envío, estados y despliegue.
 - [Despliegue](despliegue.md): preparación de Cloudflare/Neon, migraciones y publicación.
+- [Tienda de demostración](../apps/demo-store/README.md): NotifyHub conectado a un e-commerce (Vercel) y guion de la demo.
 
 ## Seguimiento del proyecto
 

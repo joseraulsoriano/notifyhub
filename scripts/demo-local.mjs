@@ -1,6 +1,6 @@
 import { spawn, spawnSync } from 'node:child_process';
 import console from 'node:console';
-import { copyFile, access } from 'node:fs/promises';
+import { access, appendFile, copyFile, readFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath, URL } from 'node:url';
 import { join } from 'node:path';
@@ -62,10 +62,26 @@ function run(command, args, cwd = root, env = process.env) {
   });
 }
 
+const storeVars = join(root, 'apps/demo-store/.dev.vars');
+
 async function setup() {
   if (!(await exists(envFile))) {
     await copyFile(join(root, '.env.example'), envFile);
     console.log('Creado .env con los valores de desarrollo local.');
+  }
+  if (!(await exists(storeVars))) {
+    await copyFile(join(root, 'apps/demo-store/.dev.vars.example'), storeVars);
+  }
+  // En local no hay credenciales de SendGrid/Twilio: el despachador usa los proveedores simulados.
+  // Va en .dev.vars porque `--var` solo llega al primer Worker de `wrangler dev -c … -c …`.
+  const dispatcherVars = join(root, 'apps/dispatcher/.dev.vars');
+  const current = (await exists(dispatcherVars)) ? await readFile(dispatcherVars, 'utf8') : '';
+  if (!/^SIMULATED_PROVIDERS=/m.test(current)) {
+    await appendFile(
+      dispatcherVars,
+      `${current && !current.endsWith('\n') ? '\n' : ''}SIMULATED_PROVIDERS=true\n`,
+    );
+    console.log('apps/dispatcher/.dev.vars: SIMULATED_PROVIDERS=true (proveedores simulados en local).');
   }
 
   console.log('\n[1/4] Comprobando Docker e iniciando PostgreSQL local...');
@@ -114,6 +130,10 @@ function startServers() {
       ],
       { cwd: join(root, 'apps/api'), stdio: 'inherit' },
     ),
+    spawn('pnpm', ['exec', 'wrangler', 'dev', '--port', '8790'], {
+      cwd: join(root, 'apps/demo-store'),
+      stdio: 'inherit',
+    }),
     spawn('pnpm', ['--filter', '@notifyhub/console', 'dev'], {
       cwd: root,
       stdio: 'inherit',
@@ -153,13 +173,14 @@ function startServers() {
 try {
   if (process.argv.includes('--help')) {
     console.log(
-      'Uso: pnpm demo:local\nInicia PostgreSQL, aplica migraciones y seed, y levanta API, dispatcher y consola.',
+      'Uso: pnpm demo:local\nInicia PostgreSQL, aplica migraciones y seed, y levanta API, dispatcher, consola y la tienda de demostración.',
     );
     process.exit(0);
   }
   await setup();
   console.log('\nDemo lista. Usa la URL que anuncie Astro y conecta la API en http://localhost:8787.');
   console.log('Conecta la consola con nh_dev_local_key. Presiona Ctrl+C para detener los Workers.');
+  console.log('Tienda de demostración (e-commerce conectado a NotifyHub): http://localhost:8790');
   await startServers();
 } catch (error) {
   console.error(`\nNo se pudo iniciar la demo local: ${error.message}`);

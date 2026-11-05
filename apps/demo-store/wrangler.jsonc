@@ -1,0 +1,17 @@
+// Tienda en línea de demostración: cada evento de un pedido se notifica al comprador vía NotifyHub.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "notifyhub-demo-store",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-09",
+  "workers_dev": true,
+  "observability": { "enabled": true },
+  "vars": {
+    "STORE_NAME": "Tienda Demo",
+    // API de NotifyHub. En local, la que levanta `pnpm demo:local`.
+    "NOTIFYHUB_API_URL": "http://localhost:8787",
+    // Consola para ver la ruta de cada aviso. Vacío = no se muestra el enlace.
+    "CONSOLE_URL": "http://localhost:4321",
+  },
+  // NOTIFYHUB_API_KEY es un secreto: en local va en .dev.vars, en Cloudflare con `wrangler secret put`.
+}
