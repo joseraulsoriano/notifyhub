@@ -66,9 +66,11 @@
 %=====================================================================
 \section{¿Qué es NotifyHub?}
 
-NotifyHub es un servicio que recibe solicitudes de notificación de otras aplicaciones (un ERP, una tienda en línea,
-una app móvil) y se encarga de que el mensaje llegue al destinatario por el canal adecuado: correo (SendGrid), SMS
-(Twilio), notificación push (Firebase Cloud Messaging) o webhook. Si el canal principal falla, reintenta con espera
+NotifyHub es el módulo de notificaciones que se conecta a un ERP o a una tienda en línea (e-commerce). Cuando en
+esos sistemas ocurre un evento de negocio, como \emph{pedido confirmado}, \emph{pago rechazado}, \emph{envío en
+camino} o \emph{factura emitida}, el sistema llama a NotifyHub y este se encarga de que el aviso llegue al cliente
+final por el canal adecuado: correo (SendGrid), SMS (Twilio), notificación push (Firebase Cloud Messaging) o
+webhook. Si el canal principal falla, reintenta con espera
 exponencial y, cuando se agota, \textbf{conmuta a un canal secundario} (\emph{fallback}). Cada intento y cada cambio
 de estado queda en una bitácora de auditoría que solo admite inserciones.
 
@@ -81,7 +83,7 @@ o disponibilidad) y \textbf{Observer} (publicar cada cambio de estado a quien le
 \toprule
 \textbf{RF} & \textbf{Descripción} \\
 \midrule
-RF1 & Recibir solicitudes por REST con API key, validarlas, deduplicarlas por \texttt{Idempotency-Key} y encolarlas por prioridad. \\
+RF1 & Recibir solicitudes por REST con API key, validarlas, deduplicarlas por \texttt{Idempotency-Key} y registrarlas para su entrega según su prioridad. \\
 RF2 & Enrutar cada solicitud al proveedor de su canal mediante factorías configurables (Factory Method). \\
 RF3 & Seleccionar proveedor dinámicamente (Strategy) y conmutar a un canal secundario cuando el principal falla. \\
 RF4 & Registrar cada intento y transición en una bitácora de auditoría consultable y exportable. \\
@@ -91,7 +93,7 @@ RF5 & Notificar los cambios de estado a servicios suscriptores (Observer + outbo
 
 \subsection{Requisitos no funcionales}
 \begin{itemize}
-  \item \textbf{Confiabilidad:} ninguna solicitud aceptada se pierde; se persiste antes de encolarse.
+  \item \textbf{Confiabilidad:} ninguna solicitud aceptada se pierde; se guarda antes de responderle al ERP o a la tienda.
   \item \textbf{Idempotencia:} reenviar la misma solicitud no duplica el envío (ventana de 24 h).
   \item \textbf{Rendimiento:} meta de 1,000 notificaciones/min con p95 de aceptación menor a 200 ms.
   \item \textbf{Seguridad:} API key por cliente, límite de solicitudes por minuto y enmascarado de datos personales.
@@ -227,13 +229,16 @@ Chain of Responsibility & \texttt{FallbackPolicy}: arma la cadena de canales (pr
 \end{tabularx}
 
 \subsection{Diagrama de contexto}
-NotifyHub como caja negra: quién lo usa y con quién habla.
+NotifyHub como caja negra dentro de la operación de un ERP y una tienda en línea: cada evento de negocio de esos
+sistemas se convierte en un aviso que llega al cliente final por correo, SMS o push.
 \fig[0.95\textwidth]{01-contexto.png}{Diagrama de contexto (C4 nivel 1).}
 
 \subsection{Diagrama de contenedores}
 Los procesos y almacenes que forman el sistema. Los clientes llaman a la API, que persiste en PostgreSQL y encola en
 Queues; el despachador consume la cola y llama a los proveedores; el \emph{event relay} (Sprint 4) leerá el outbox y
-entregará eventos a los suscriptores. Las líneas punteadas son telemetría (OpenTelemetry).
+entregará eventos a los suscriptores. Las líneas punteadas son telemetría (OpenTelemetry). Las colas son un detalle
+de implementación para que un proveedor lento no frene al ERP ni a la tienda; por eso solo aparecen en este diagrama
+y en el de despliegue, y no en los modelos de casos de uso, flujos, secuencia ni estados.
 \fig[0.85\textwidth]{02-contenedores.png}{Diagrama de contenedores (C4 nivel 2).}
 
 \subsection{Diagrama de despliegue (arquitectura implementada)}
@@ -244,7 +249,7 @@ GitHub, donde Actions corre el CI en cada pull request; el despliegue se hace co
 
 \paragraph{Funcionamiento de punta a punta.}
 \begin{enumerate}
-  \item Una aplicación cliente hace \texttt{POST /v1/notifications} con su API key y, opcionalmente, una
+  \item Ante un evento de negocio, el ERP o la tienda hace \texttt{POST /v1/notifications} con su API key y, opcionalmente, una
         \texttt{Idempotency-Key}.
   \item El Worker de la API valida la llave, consulta al Durable Object si el cliente está dentro de su límite,
         valida el cuerpo y revisa la idempotencia.
@@ -267,8 +272,9 @@ consola. Los proveedores están \textbf{simulados}: su comportamiento depende de
 %=====================================================================
 \section{Diagrama de casos de uso}
 
-Actores humanos a la izquierda (aplicación cliente, operador, administrador) y sistemas externos a la derecha
-(cola/despachador, proveedores y suscriptores). Las relaciones \guillemotleft include\guillemotright{} son pasos
+A la izquierda, los sistemas de negocio que originan los avisos (tienda en línea y ERP) y los usuarios internos
+(operador y administrador); a la derecha, quien recibe el aviso (cliente final) y los sistemas externos
+(proveedores y suscriptores). Las relaciones \guillemotleft include\guillemotright{} son pasos
 obligatorios (toda llamada se autentica; todo despacho reintenta y publica eventos); las
 \guillemotleft extend\guillemotright{} son opcionales (la deduplicación solo ocurre si llega
 \texttt{Idempotency-Key}; el fallback solo si se agota el canal; exportar CSV es opcional al consultar la bitácora).
@@ -279,11 +285,11 @@ obligatorios (toda llamada se autentica; todo despacho reintenta y publica event
 \toprule
 \textbf{CU} & \textbf{Actor} & \textbf{Descripción breve} \\
 \midrule
-CU-01 & App cliente & Envía una notificación con remitente, destinatario, mensaje, prioridad y canal preferido. \\
-CU-04 & App cliente, operador & Consulta estado, intentos e historial de una notificación. \\
+CU-01 & Tienda en línea, ERP & Ante un evento de negocio (pedido, pago, envío, factura) pide notificar al cliente final con destinatario, mensaje, prioridad y canal preferido. \\
+CU-04 & Tienda en línea, ERP, operador & Consulta estado, intentos e historial de una notificación. \\
 CU-05 & Operador & Lista notificaciones filtrando por estado, canal y prioridad, con paginación. \\
-CU-06 & Despachador & Entrega la notificación por el mejor proveedor del canal. \\
-CU-08 & Despachador & Conmuta al canal secundario cuando el principal se agota. \\
+CU-06 & Cliente final, proveedor & Entrega la notificación por el mejor proveedor del canal. \\
+CU-08 & Cliente final, proveedor & Conmuta al canal secundario cuando el principal se agota. \\
 CU-09/10 & Operador & Consulta la bitácora de auditoría y la exporta a CSV. \\
 CU-11 & Administrador & Habilita proveedores y cambia su salud, lo que afecta el ruteo en vivo. \\
 CU-13/14 & Administrador, suscriptor & Gestiona suscripciones y recibe eventos de cambio de estado (S4). \\
@@ -294,17 +300,17 @@ CU-13/14 & Administrador, suscriptor & Gestiona suscripciones y recibe eventos d
 \section{Diagramas de flujo}
 
 \subsection{Recepción de una notificación (RF1)}
-Las validaciones van de la más barata a la más cara: llave, límite, esquema e idempotencia. Lo importante del diseño
-es que la notificación se \textbf{persiste antes de encolarse}: si la cola falla, queda en \texttt{RECEIVED} y el
-despachador la recupera en un barrido, así nunca se pierde.
+Empieza cuando el ERP o la tienda emite un evento de negocio. Las validaciones van de la más barata a la más cara:
+llave, límite, esquema e idempotencia. Lo importante del diseño es que la notificación se \textbf{registra antes de
+responder}: queda en \texttt{RECEIVED}, pendiente de envío, y desde ahí arranca la entrega, así nunca se pierde.
 \fig[0.72\textwidth]{09-flujo-recepcion.png}{Flujo de recepción en la API.}
 
 \subsection{Despacho con reintentos y fallback (RF2, RF3)}
 Es el algoritmo del \texttt{DispatchService}. Por cada canal de la cadena, la Strategy ordena los proveedores y la
 factoría crea el emisor. Un error transitorio provoca reintentos con backoff; un error permanente o los reintentos
-agotados pasan al siguiente proveedor y, después, al siguiente canal. Como Queues entrega \emph{al menos una vez}, lo
-primero que hace es verificar que la notificación siga en \texttt{QUEUED}.
-\fig[0.62\textwidth]{10-flujo-despacho.png}{Flujo de despacho en el Worker despachador.}
+agotados pasan al siguiente proveedor y, después, al siguiente canal. Lo primero que hace es verificar que la
+notificación siga pendiente, para no avisarle dos veces al cliente final.
+\fig[0.62\textwidth]{10-flujo-despacho.png}{Flujo de despacho de una notificación.}
 
 %=====================================================================
 \section{Diagrama entidad-relación}
@@ -320,7 +326,7 @@ primero que hace es verificar que la notificación siga en \texttt{QUEUED}.
 %=====================================================================
 \section{Diagrama de secuencia}
 
-Envío de una notificación con los tres desenlaces posibles: éxito directo, error transitorio con reintento y
+La tienda en línea confirma un pedido y NotifyHub le avisa al comprador. Se muestran los tres desenlaces posibles: éxito directo, error transitorio con reintento y
 fallback a un proveedor secundario. Muestra cómo colaboran los patrones: el \texttt{DispatchService} pide el orden a
 la Strategy, el emisor a la factoría y publica cada cambio al \texttt{EventPublisher} (Observer).
 \fig[0.95\textwidth]{05-secuencia-envio.png}{Secuencia de envío con fallback.}
@@ -332,7 +338,9 @@ la Strategy, el emisor a la factoría y publica cada cambio al \texttt{EventPubl
 \fig{03-clases-patrones.png}{Diagrama de clases con Factory Method, Strategy y Observer.}
 
 \subsection{Máquina de estados de la notificación}
-Cada transición solo procede desde el estado esperado; eso hace idempotente al despachador.
+Cada transición solo procede desde el estado esperado; eso hace idempotente al despachador. En la implementación
+existe además un estado técnico \texttt{QUEUED} entre \texttt{RECEIVED} y \texttt{SENDING}; en el modelo se omite
+porque no cambia nada para el ERP, la tienda ni el cliente final.
 \fig[0.6\textwidth]{06-estados.png}{Estados de una notificación.}
 
 %=====================================================================

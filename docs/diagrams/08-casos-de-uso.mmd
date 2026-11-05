@@ -1,10 +1,11 @@
 flowchart LR
-  app(["👤 Aplicación cliente"])
+  shop(["🛒 Tienda en línea<br/>(e-commerce)"])
+  erp(["🏢 ERP"])
   ops(["👤 Operador / soporte"])
   adm(["👤 Administrador"])
   subgraph NH["Sistema NotifyHub"]
     direction TB
-    uc1(["CU-01 Enviar notificación"])
+    uc1(["CU-01 Notificar evento de negocio<br/>pedido · pago · envío · factura"])
     uc4(["CU-04 Consultar estado de una notificación"])
     uc5(["CU-05 Listar y filtrar notificaciones"])
     uc12(["CU-12 Conectar consola a la API"])
@@ -14,16 +15,18 @@ flowchart LR
     uc2(["CU-02 Autenticar con API key"])
     uc3(["CU-03 Deduplicar por Idempotency-Key"])
     uc10(["CU-10 Exportar bitácora a CSV"])
-    uc6(["CU-06 Despachar por canal y proveedor"])
+    uc6(["CU-06 Entregar por canal y proveedor"])
     uc7(["CU-07 Reintentar con backoff"])
     uc8(["CU-08 Conmutar a canal secundario (fallback)"])
     uc14(["CU-14 Notificar cambios de estado"])
   end
-  tiempo(["⏱ Cola / despachador"])
+  buyer(["👤 Cliente final<br/>(comprador)"])
   prov(["⚙ Proveedor externo<br/>SendGrid · Twilio · FCM · Webhook"])
   sub(["⚙ Servicio suscriptor"])
-  app --- uc1
-  app --- uc4
+  shop --- uc1
+  erp --- uc1
+  shop --- uc4
+  erp --- uc4
   ops --- uc4
   ops --- uc5
   ops --- uc9
@@ -34,14 +37,16 @@ flowchart LR
   uc4 -. "«include»" .-> uc2
   uc3 -. "«extend»" .-> uc1
   uc10 -. "«extend»" .-> uc9
-  uc1 -. "dispara" .-> uc6
+  uc1 -. "«include»" .-> uc6
   uc6 -. "«include»" .-> uc7
   uc8 -. "«extend»" .-> uc6
   uc6 -. "«include»" .-> uc14
-  uc6 --- tiempo
   uc6 --- prov
+  uc6 --- buyer
   uc14 --- sub
   classDef uc fill:#eef2ff,stroke:#4f46e5,color:#1e1b4b
   classDef actor fill:#fff,stroke:#334155,color:#0f172a
+  classDef biz fill:#fef3c7,stroke:#d97706,color:#0f172a
   class uc1,uc2,uc3,uc4,uc5,uc6,uc7,uc8,uc9,uc10,uc11,uc12,uc13,uc14 uc
-  class app,ops,adm,prov,sub,tiempo actor
+  class ops,adm,prov,sub actor
+  class shop,erp,buyer biz
