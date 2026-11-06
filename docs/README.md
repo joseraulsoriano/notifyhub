@@ -2,6 +2,7 @@
 
 ## Empieza aquí
 
+- [Explicación del proyecto](explicacion-del-proyecto.md): resumen para presentar NotifyHub y su tienda de demostración.
 - [Guía del proyecto](guia-del-proyecto.md): configuración local desde cero, recorrido de una solicitud, arquitectura,
   concurrencia y paso a producción.
 - [Contrato HTTP](api/openapi.yaml): rutas, cuerpos de solicitud y respuestas de la API.

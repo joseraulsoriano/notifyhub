@@ -11,6 +11,7 @@
 \usepackage{enumitem}
 \usepackage{caption}
 \usepackage[hidelinks]{hyperref}
+\def\UrlBreaks{\do\/\do-\do.}
 \usepackage{titlesec}
 \usepackage{fancyhdr}
 \usepackage{parskip}
@@ -83,7 +84,7 @@ o disponibilidad) y \textbf{Observer} (publicar cada cambio de estado a quien le
 \toprule
 \textbf{RF} & \textbf{Descripción} \\
 \midrule
-RF1 & Recibir solicitudes por REST con API key, validarlas, deduplicarlas por \texttt{Idempotency-Key} y registrarlas para su entrega según su prioridad. \\
+RF1 & Recibir solicitudes por REST con API key, validarlas, deduplicarlas por \texttt{Idempotency-Key} y encolarlas por prioridad. \\
 RF2 & Enrutar cada solicitud al proveedor de su canal mediante factorías configurables (Factory Method). \\
 RF3 & Seleccionar proveedor dinámicamente (Strategy) y conmutar a un canal secundario cuando el principal falla. \\
 RF4 & Registrar cada intento y transición en una bitácora de auditoría consultable y exportable. \\
@@ -93,7 +94,7 @@ RF5 & Notificar los cambios de estado a servicios suscriptores (Observer + outbo
 
 \subsection{Requisitos no funcionales}
 \begin{itemize}
-  \item \textbf{Confiabilidad:} ninguna solicitud aceptada se pierde; se guarda antes de responderle al ERP o a la tienda.
+  \item \textbf{Confiabilidad:} ninguna solicitud aceptada se pierde; se persiste antes de encolarse.
   \item \textbf{Idempotencia:} reenviar la misma solicitud no duplica el envío (ventana de 24 h).
   \item \textbf{Rendimiento:} meta de 1,000 notificaciones/min con p95 de aceptación menor a 200 ms.
   \item \textbf{Seguridad:} API key por cliente, límite de solicitudes por minuto y enmascarado de datos personales.
@@ -192,6 +193,14 @@ La arquitectura combina tres ideas:
         es Postgres (Neon) a través de Hyperdrive.
 \end{enumerate}
 
+\paragraph{Por qué Cloudflare y no Docker ni Kubernetes.} El requisito de costo es 0~USD y el plan gratuito de
+Cloudflare incluye todo lo que el sistema necesita: Workers, Queues, Durable Objects y Hyperdrive. No hay servidores
+que operar ni arranques en frío. Docker se usa solo en desarrollo (Postgres, Mailpit, WireMock y Grafana en
+\texttt{infra/compose.yaml}); en producción no hay contenedores, porque los Workers ejecutan el código directamente.
+Kubernetes no hace falta: Cloudflare ya crea tantas instancias de la API como peticiones lleguen y las retira cuando
+no hay tráfico, algo posible porque la API no guarda estado en memoria. Los contenedores se evaluaron en el ADR-006
+y se descartaron porque requerían el plan de pago. El detalle está en \texttt{docs/cola-y-cloudflare.md}.
+
 La prueba de que la hexagonal funciona: entre el Sprint 0 y el Sprint 1 se cambió NestJS por Hono, BullMQ/Redis por
 Cloudflare Queues y Prisma Client por \texttt{pg}, y los casos de uso y sus pruebas \textbf{no cambiaron} (ADR-007).
 
@@ -236,9 +245,9 @@ sistemas se convierte en un aviso que llega al cliente final por correo, SMS o p
 \subsection{Diagrama de contenedores}
 Los procesos y almacenes que forman el sistema. Los clientes llaman a la API, que persiste en PostgreSQL y encola en
 Queues; el despachador consume la cola y llama a los proveedores; el \emph{event relay} (Sprint 4) leerá el outbox y
-entregará eventos a los suscriptores. Las líneas punteadas son telemetría (OpenTelemetry). Las colas son un detalle
-de implementación para que un proveedor lento no frene al ERP ni a la tienda; por eso solo aparecen en este diagrama
-y en el de despliegue, y no en los modelos de casos de uso, flujos, secuencia ni estados.
+entregará eventos a los suscriptores. Las líneas punteadas son telemetría (OpenTelemetry). La cola existe para que un
+proveedor lento no frene al ERP ni a la tienda: la API responde en milisegundos y el envío ocurre después. La
+comparación con las alternativas (asíncrono sin cola y síncrono) está en \texttt{docs/cola-y-cloudflare.md}.
 \fig[0.85\textwidth]{02-contenedores.png}{Diagrama de contenedores (C4 nivel 2).}
 
 \subsection{Diagrama de despliegue (arquitectura implementada)}
@@ -265,9 +274,16 @@ GitHub, donde Actions corre el CI en cada pull request; el despliegue se hace co
 
 \paragraph{Qué es real y qué es simulado.} Es real la recepción con idempotencia y límite de solicitudes, las colas
 por prioridad, la máquina de estados, los reintentos, el fallback, la bitácora en Postgres, la API, el SDK y la
-consola. Los proveedores están \textbf{simulados}: su comportamiento depende de su salud configurada (\texttt{UP},
-\texttt{DEGRADED}, \texttt{DOWN}), lo que permite demostrar el fallback sin credenciales. Outbox y suscripciones
-(RF5) y circuit breaker están planeados para S3--S4.
+consola, y la API de suscripciones (alta, listado y activación). Los proveedores están \textbf{simulados}: su
+comportamiento depende de su salud configurada (\texttt{UP}, \texttt{DEGRADED}, \texttt{DOWN}), lo que permite
+demostrar el fallback sin credenciales. Están pendientes la entrega de eventos a los suscriptores (outbox y
+\emph{event relay}, RF5), el circuit breaker y el barrido de notificaciones que se queden en \texttt{RECEIVED}.
+
+\paragraph{Integración con una tienda en línea.} Para demostrar a NotifyHub dentro de un e-commerce, el repositorio
+incluye una tienda de demostración (\texttt{apps/demo-store}), publicada en
+\url{https://notifyhub-demo-store.vercel.app} con su propio cliente y API key. Cada evento del pedido (pedido
+confirmado, pago rechazado, envío en camino, pedido entregado) llama a \texttt{POST /v1/notifications} con la
+\texttt{Idempotency-Key} \texttt{<pedido>:<evento>}, y la página consulta el estado del aviso hasta que se entrega.
 
 %=====================================================================
 \section{Diagrama de casos de uso}
@@ -301,32 +317,36 @@ CU-13/14 & Administrador, suscriptor & Gestiona suscripciones y recibe eventos d
 
 \subsection{Recepción de una notificación (RF1)}
 Empieza cuando el ERP o la tienda emite un evento de negocio. Las validaciones van de la más barata a la más cara:
-llave, límite, esquema e idempotencia. Lo importante del diseño es que la notificación se \textbf{registra antes de
-responder}: queda en \texttt{RECEIVED}, pendiente de envío, y desde ahí arranca la entrega, así nunca se pierde.
+llave, límite, esquema e idempotencia. Lo importante del diseño es que la notificación se \textbf{persiste antes de
+encolarse}: si la cola falla, queda guardada en \texttt{RECEIVED} y no se pierde. Hoy nadie la reintenta de forma
+automática; el barrido que recupere esas notificaciones está pendiente.
 \fig[0.72\textwidth]{09-flujo-recepcion.png}{Flujo de recepción en la API.}
 
 \subsection{Despacho con reintentos y fallback (RF2, RF3)}
 Es el algoritmo del \texttt{DispatchService}. Por cada canal de la cadena, la Strategy ordena los proveedores y la
 factoría crea el emisor. Un error transitorio provoca reintentos con backoff; un error permanente o los reintentos
-agotados pasan al siguiente proveedor y, después, al siguiente canal. Lo primero que hace es verificar que la
-notificación siga pendiente, para no avisarle dos veces al cliente final.
-\fig[0.62\textwidth]{10-flujo-despacho.png}{Flujo de despacho de una notificación.}
+agotados pasan al siguiente proveedor y, después, al siguiente canal. Como Queues entrega \emph{al menos una vez}, lo
+primero que hace es revisar el estado: descarta lo que ya terminó, toma lo que está en \texttt{QUEUED} y retoma un
+envío abandonado si lleva 120~s sin avance. Si otro despacho tiene la notificación, devuelve el mensaje a la cola
+para intentarlo en 30~s.
+\fig[0.62\textwidth]{10-flujo-despacho.png}{Flujo de despacho en el Worker despachador.}
 
 %=====================================================================
 \section{Diagrama entidad-relación}
 
 \texttt{NOTIFICATION} es la entidad central: pertenece a un \texttt{CLIENT\_APP}, tiene muchos
 \texttt{DELIVERY\_ATTEMPT} (cada uno hecho por un \texttt{PROVIDER}) y deja registros en \texttt{AUDIT\_LOG}.
-\texttt{ROUTING\_RULE} define el orden de proveedores y el canal de fallback por prioridad. Para RF5,
-\texttt{OUTBOX\_EVENT} guarda los eventos en la misma transacción que el cambio de estado, y
-\texttt{SUBSCRIPTION\_DELIVERY} registra la entrega de cada evento a cada suscripción. La llave
+\texttt{ROUTING\_RULE} define el orden de proveedores y el canal de fallback por prioridad. Para RF5 (pendiente),
+\texttt{OUTBOX\_EVENT} guardará los eventos en la misma transacción que el cambio de estado y
+\texttt{SUBSCRIPTION\_DELIVERY} registrará la entrega de cada evento a cada suscripción; las tablas ya existen, pero
+todavía no se llenan. La llave
 \texttt{(client\_app\_id, idempotency\_key)} es única para garantizar la deduplicación.
 \fig{04-er.png}{Modelo entidad-relación.}
 
 %=====================================================================
 \section{Diagrama de secuencia}
 
-La tienda en línea confirma un pedido y NotifyHub le avisa al comprador. Se muestran los tres desenlaces posibles: éxito directo, error transitorio con reintento y
+La tienda en línea confirma un pedido y NotifyHub le avisa al comprador. La API responde \texttt{202} en cuanto encola, y el envío ocurre después en el despachador. Se muestran los tres desenlaces posibles: éxito directo, error transitorio con reintento y
 fallback a un proveedor secundario. Muestra cómo colaboran los patrones: el \texttt{DispatchService} pide el orden a
 la Strategy, el emisor a la factoría y publica cada cambio al \texttt{EventPublisher} (Observer).
 \fig[0.95\textwidth]{05-secuencia-envio.png}{Secuencia de envío con fallback.}
@@ -338,9 +358,8 @@ la Strategy, el emisor a la factoría y publica cada cambio al \texttt{EventPubl
 \fig{03-clases-patrones.png}{Diagrama de clases con Factory Method, Strategy y Observer.}
 
 \subsection{Máquina de estados de la notificación}
-Cada transición solo procede desde el estado esperado; eso hace idempotente al despachador. En la implementación
-existe además un estado técnico \texttt{QUEUED} entre \texttt{RECEIVED} y \texttt{SENDING}; en el modelo se omite
-porque no cambia nada para el ERP, la tienda ni el cliente final.
+Cada transición solo procede desde el estado esperado; eso hace idempotente al despachador. Son los mismos estados
+que define \texttt{packages/domain/src/status-machine.ts}.
 \fig[0.6\textwidth]{06-estados.png}{Estados de una notificación.}
 
 %=====================================================================
@@ -368,14 +387,14 @@ filtrada por esa notificación.
 \section{Calidad y estado actual}
 
 \begin{itemize}
-  \item \textbf{148 pruebas automatizadas en verde} (Vitest) en dominio, aplicación, proveedores, API, SDK, UI y
+  \item \textbf{173 pruebas automatizadas en verde} (Vitest) en dominio, aplicación, proveedores, API, SDK, UI y
         consola, más una prueba de humo contra Postgres real en CI.
   \item Pirámide de pruebas: unitarias (máquina de estados, casos de uso, estrategias, fallback), de componente
         (cada código de respuesta del contrato OpenAPI), integración, humo y carga con k6 (S4).
   \item Contrato de la API en OpenAPI 3.1 (\texttt{docs/api/openapi.yaml}), validado con Redocly.
-  \item Desplegado y verificado en Cloudflare: API, despachador y consola.
-  \item Pendiente: adaptadores reales de proveedores, circuit breaker, outbox y suscripciones (RF5), dashboards y
-        prueba de carga.
+  \item Desplegado y verificado en Cloudflare: API, despachador y consola; la tienda de demostración, en Vercel.
+  \item Pendiente: adaptadores reales de proveedores, circuit breaker, entrega de eventos a suscriptores (outbox y
+        \emph{event relay}, RF5), barrido de notificaciones en \texttt{RECEIVED}, dashboards y prueba de carga.
 \end{itemize}
 
 \end{document}
