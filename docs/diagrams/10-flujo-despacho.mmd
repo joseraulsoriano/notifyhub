@@ -1,7 +1,10 @@
 flowchart TD
-  A([Inicio: notificación pendiente de envío]) --> B{¿La notificación existe<br/>y sigue pendiente?}
-  B -- No --> B1[Descartar: ya procesada<br/>evita envíos duplicados] --> Z([Fin])
-  B -- Sí --> C[RECEIVED → SENDING]
+  A([Inicio: la cola entrega un mensaje]) --> B{¿Otro despacho tiene<br/>esta notificación?}
+  B -- Sí --> B2[Devolver el mensaje a la cola<br/>para reintentar en 30 s] --> Z([Fin])
+  B -- No --> S{¿En qué estado está?}
+  S -- "SENT, DELIVERED o FAILED" --> B1[Descartar: ya procesada<br/>la cola entrega al menos una vez] --> Z
+  S -- QUEUED --> C[QUEUED → SENDING]
+  S -- "SENDING, RETRYING o FALLBACK<br/>sin avance en 120 s" --> C2[Retomar el envío abandonado] --> D
   C --> D[FallbackPolicy arma la cadena de canales<br/>preferido → secundarios según destinatario]
   D --> E[Tomar siguiente canal]
   E --> F[Strategy ordena proveedores del canal<br/>Costo · Prioridad · Disponibilidad]
@@ -9,10 +12,10 @@ flowchart TD
   G --> H[send al proveedor<br/>registrar intento + evento]
   H --> I{¿Respuesta del proveedor?}
   I -- Éxito --> J[SENDING → SENT → DELIVERED<br/>el cliente final recibe el aviso] --> Z
-  I -- Error transitorio --> K{¿Quedan intentos?<br/>máx. 3}
+  I -- "Error transitorio<br/>429, 5xx, timeout o red" --> K{¿Quedan intentos?<br/>máx. 3}
   K -- Sí --> L[SENDING → RETRYING<br/>esperar backoff exponencial] --> M[RETRYING → SENDING] --> H
   K -- No --> N{¿Otro proveedor<br/>en este canal?}
-  I -- Error permanente --> N
+  I -- "Error permanente<br/>otro 4xx" --> N
   N -- Sí --> G
   N -- No --> O[SENDING → FALLBACK]
   O --> P{¿Hay otro canal<br/>con proveedor habilitado?}

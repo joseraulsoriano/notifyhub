@@ -1,11 +1,12 @@
 stateDiagram-v2
   [*] --> RECEIVED: solicitud válida del ERP o la tienda
-  RECEIVED --> SENDING: inicia el envío
+  RECEIVED --> QUEUED: encolada por prioridad
+  QUEUED --> SENDING: el despachador la toma
   SENDING --> SENT: proveedor acepta
   SENDING --> RETRYING: error transitorio
   RETRYING --> SENDING: tras backoff
   RETRYING --> FALLBACK: reintentos agotados
-  SENDING --> FALLBACK: error permanente o circuito abierto
+  SENDING --> FALLBACK: error permanente
   FALLBACK --> SENDING: siguiente canal o proveedor
   FALLBACK --> FAILED: sin alternativas
   SENT --> DELIVERED: confirmación del proveedor

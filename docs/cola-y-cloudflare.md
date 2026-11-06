@@ -46,7 +46,8 @@ Lo importante de este diseño:
 
 - **La tienda no espera el envío.** Recibe `202 Accepted` con el `id` y consulta el resultado después, o lo ve en la
   consola. Un proveedor lento o caído nunca frena su proceso de venta.
-- **Se guarda antes de encolar.** Si la cola falla, la notificación queda en `RECEIVED` y no se pierde.
+- **Se guarda antes de encolar.** Si la cola falla, la notificación queda en `RECEIVED` y no se pierde. Hoy nadie
+  la reintenta sola: el barrido que recoja esas notificaciones está pendiente.
 - **Una cola por prioridad.** Un pico de avisos de prioridad baja (promociones) no retrasa los de prioridad alta
   (pago rechazado).
 - **Absorbe picos.** Si llegan 1,000 pedidos de golpe, la cola los guarda y el despachador los saca a su ritmo,
@@ -74,10 +75,10 @@ Son tres formas de resolver el mismo problema. Se evaluaron las tres y el proyec
 notificaciones por minuto. Solo la versión con cola cumple las dos cosas sin que la tienda dependa de lo que tarde un
 proveedor externo. El síncrono es más fácil de explicar, pero hace que la venta espere al correo o al SMS.
 
-**Sobre la observación de "no mostrar la cola":** la cola es un detalle de implementación. Por eso los diagramas de
-modelado (contexto, casos de uso, flujos, secuencia y estados) muestran el negocio sin la cola, y la cola aparece solo
-en los diagramas de [contenedores](diagrams/render/02-contenedores.png) y
-[despliegue](diagrams/render/07-despliegue.png), que describen cómo está construido.
+**Sobre la observación de "no mostrar la cola":** el código es la referencia, y el código encola. Por eso los
+diagramas de contexto y casos de uso muestran el negocio (la tienda o el ERP origina el aviso y el cliente final lo
+recibe), sin la cola porque ahí no hay infraestructura; y los de secuencia, estados, flujos, contenedores y despliegue
+muestran la cola y el estado `QUEUED`, porque describen lo que el sistema hace.
 
 ## 3. Qué usamos de Cloudflare y para qué
 
@@ -158,6 +159,7 @@ El resultado se consulta con `GET /v1/notifications/{id}`.
 cortó a la mitad, el despachador lo detecta por su estado y lo retoma.
 
 **¿Qué pasa si se cae la cola al encolar?** La notificación ya quedó guardada en `RECEIVED`, así que no se pierde.
+Todavía no se reintenta sola; el barrido que la recupere está pendiente.
 
 **¿Se puede mandar dos veces el mismo aviso?** No, si la tienda usa la misma `Idempotency-Key` al reintentar: la API
 devuelve la notificación original. La tienda de demostración usa `<pedido>:<evento>` como llave.
