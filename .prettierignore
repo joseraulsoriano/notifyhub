@@ -9,3 +9,5 @@ apps/dispatcher/worker-configuration.d.ts
 .wrangler
 .astro
 .gstack
+apps/demo-store/worker-configuration.d.ts
+apps/demo-store/vercel/api

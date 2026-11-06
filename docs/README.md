@@ -11,6 +11,9 @@
 - [ADRs](adr/README.md): decisiones técnicas y alternativas.
 - [Diagramas](diagrams/): contexto, contenedores, clases, secuencia de envío, estados y despliegue.
 - [Despliegue](despliegue.md): preparación de Cloudflare/Neon, migraciones y publicación.
+- [Cola, Cloudflare y por qué no Docker ni Kubernetes](cola-y-cloudflare.md): cómo viaja una notificación, con cola,
+  asíncrono o síncrono, y por qué se eligió Cloudflare.
+- [Tienda de demostración](../apps/demo-store/README.md): NotifyHub conectado a un e-commerce (Vercel) y guion de la demo.
 
 ## Seguimiento del proyecto
 

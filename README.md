@@ -43,6 +43,10 @@ esa ventana también; cada pestaña guarda su conexión por separado, pero las n
 comparten en PostgreSQL. El modo demo es independiente por pestaña. La guía explica el recorrido local y la
 arquitectura en [Guía del proyecto](docs/guia-del-proyecto.md). `pnpm dev` sigue siendo solo el servidor API.
 
+`pnpm demo:local` también levanta la **tienda de demostración** en <http://localhost:8790>: un e-commerce que manda
+un aviso por NotifyHub en cada evento del pedido. Está publicada en <https://notifyhub-demo-store.vercel.app>;
+cómo funciona, cómo se despliega y el guion de la demostración están en [`apps/demo-store`](apps/demo-store).
+
 Ya con la API y el consumidor locales ejecutándose, puedes enviar una solicitud:
 
 ```bash
@@ -121,6 +125,7 @@ apps/
   dispatcher/     Worker consumidor de Queues: despacho, reintentos y fallback
   console/        Consola web (Astro + React + shadcn/ui), usa client y ui
   event-relay/    outbox → cola de eventos → webhooks (RF5)            ← S4
+  demo-store/     Tienda en línea de demostración que notifica a sus clientes vía NotifyHub
 packages/
   domain/         entidades, estados y errores; sin dependencias
   application/    casos de uso, puertos y despacho (Strategy, Factory, Observer)

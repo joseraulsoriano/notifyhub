@@ -1,20 +1,28 @@
 flowchart LR
-  cli["Aplicaciones cliente<br/>(ERP, e-commerce, apps móviles)"]
+  shop["Tienda en línea<br/>(e-commerce)"]
+  erp["ERP<br/>(ventas, facturación, inventario)"]
   ops["Operación y soporte"]
-  nh["NotifyHub<br/>Servicio de notificaciones<br/>y registro multicanal"]
+  nh["NotifyHub<br/>Servicio de notificaciones<br/>y registro multicanal<br/><br/>POST /v1/notifications · API key"]
   sg["SendGrid<br/>correo electrónico"]
   tw["Twilio<br/>SMS"]
   fcm["Firebase Cloud Messaging<br/>push"]
   wh["Sistemas externos<br/>vía webhook"]
+  buyer["Cliente final<br/>(comprador)"]
   subs["Servicios suscriptores<br/>(monitoreo, analítica)"]
-  cli -- "POST /v1/notifications<br/>REST + API key" --> nh
+  shop -- "Pedido confirmado<br/>Pago rechazado<br/>Envío en camino" --> nh
+  erp -- "Factura emitida<br/>Stock bajo<br/>Cobranza vencida" --> nh
   ops -- "Consulta bitácora<br/>y dashboards" --> nh
   nh -- "Email" --> sg
   nh -- "SMS" --> tw
   nh -- "Push" --> fcm
   nh -- "HTTP firmado HMAC" --> wh
+  sg --> buyer
+  tw --> buyer
+  fcm --> buyer
   nh -- "Eventos de cambio de estado" --> subs
   classDef core fill:#4f46e5,color:#fff,stroke:#312e81
   classDef ext fill:#f1f5f9,stroke:#94a3b8,color:#0f172a
+  classDef biz fill:#fef3c7,stroke:#d97706,color:#0f172a
   class nh core
-  class sg,tw,fcm,wh,subs,cli,ops ext
+  class sg,tw,fcm,wh,subs,ops ext
+  class shop,erp,buyer biz

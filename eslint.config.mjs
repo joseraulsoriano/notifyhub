@@ -15,6 +15,11 @@ export default tseslint.config(
       '**/.gstack/**',
       'apps/api/worker-configuration.d.ts',
       'apps/dispatcher/worker-configuration.d.ts',
+      'apps/demo-store/worker-configuration.d.ts',
+      // Paquete generado por scripts/build-vercel.mjs (no se versiona).
+      'apps/demo-store/vercel/api/**',
+      // Scripts CommonJS que generan la presentación; no son código del producto.
+      'docs/presentacion/**',
     ],
   },
   js.configs.recommended,
