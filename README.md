@@ -196,7 +196,7 @@ Fuente Mermaid en [docs/diagrams](docs/diagrams). Para regenerar una imagen desd
 
 ![Diagrama de navegación](docs/diagrams/render/11-navegacion.png)
 
-Informe con todos los diagramas explicados, la arquitectura y la metodología: [docs/informe/notifyhub.pdf](docs/informe/notifyhub.pdf)
+Informe con todos los diagramas explicados, la arquitectura y la metodología: fuente en [docs/informe/notifyhub.tex](docs/informe/notifyhub.tex). El PDF se genera en local con `cd docs/informe && latexmk -xelatex notifyhub.tex` y no se sube al repositorio.
 (fuente LaTeX en la misma carpeta; `latexmk -lualatex notifyhub.tex`).
 
 ## Comandos
