@@ -1,8 +1,11 @@
 // Notificaciones push al celular vía ntfy (https://ntfy.sh). Funciones puras y testeables.
 // Minimización de datos: a ntfy solo viaja el título de la tarea y su estado (nunca correos ni nombres).
 
-// Render no tiene salida IPv6: sin esto, la conexión a ntfy.sh se queda esperando una dirección AAAA y vence.
+// Desde Render el apretón de manos TCP con ntfy.sh tarda más de los 250 ms por intento que Node 22 usa por defecto
+// al probar sus 4 direcciones (2 IPv4 + 2 IPv6): todas vencían en 1 s con ETIMEDOUT. Se prefiere IPv4 y se da
+// margen real a cada intento.
 require("node:dns").setDefaultResultOrder("ipv4first");
+require("node:net").setDefaultAutoSelectFamilyAttemptTimeout(5000);
 
 const TOPIC_PATTERN = /^[A-Za-z0-9_-]{12,64}$/;
 const DEFAULT_SERVER = "https://ntfy.sh";
