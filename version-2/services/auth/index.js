@@ -93,6 +93,16 @@ app.get(
   }),
 );
 
+// Directorio para elegir miembros y responsables: solo id, nombre y rol (sin correo).
+app.get(
+  "/users",
+  asyncRoute(async (req, res) => {
+    requireActor(req);
+    const { rows } = await pool.query("SELECT id, name, role FROM auth.users ORDER BY name ASC LIMIT 200");
+    res.json({ users: rows });
+  }),
+);
+
 app.patch(
   "/users/:id/role",
   asyncRoute(async (req, res) => {

@@ -161,6 +161,16 @@ test(
     assert.ok(memberNotifications.data.notifications.some((item) => item.event_type === "task_assigned"));
     assert.ok(leaderNotifications.data.notifications.some((item) => item.event_type === "task_status_changed"));
 
+    const directory = await request("/api/auth/users", { token: leaderToken });
+    assert.equal(directory.status, 200);
+    assert.ok(directory.data.users.some((user) => user.id === memberId));
+    assert.ok(directory.data.users.every((user) => user.email === undefined), "el directorio no expone correos");
+    const members = await request(`/api/projects/${projectId}/members`, { token: leaderToken });
+    assert.equal(members.status, 200);
+    assert.ok(members.data.members.some((user) => user.id === memberId));
+    assert.equal(members.data.members[0].is_leader, true);
+    assert.equal((await request("/api/auth/users")).status, 401);
+
     const online = await request(`/api/presence/online/${memberId}`, { token: leaderToken });
     assert.equal(online.data.online, true);
     const logout = await request("/api/auth/logout", { token: memberToken, method: "POST" });

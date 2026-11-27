@@ -22,6 +22,30 @@ app.use(cors(parseOrigins(process.env.CORS_ORIGINS)));
 app.use(express.json({ limit: "1mb" }));
 app.get("/health", (_req, res) => res.json({ status: "ok", service: "api-gateway" }));
 
+// Salud profunda y pública: el frontend la usa para mostrar la arquitectura en vivo.
+app.get("/health/services", async (_req, res) => {
+  const targets = { auth: AUTH_URL, tasks: TASK_URL, notifications: NOTIFICATION_URL, presence: PRESENCE_URL };
+  const probe = async (url) => {
+    const started = Date.now();
+    try {
+      const response = await fetch(`${url}/health`, { signal: AbortSignal.timeout(4000) });
+      return { ok: response.ok, ms: Date.now() - started };
+    } catch {
+      return { ok: false, ms: Date.now() - started };
+    }
+  };
+  const entries = await Promise.all(Object.entries(targets).map(async ([name, url]) => [name, await probe(url)]));
+  const started = Date.now();
+  let redisState = { ok: false, ms: 0 };
+  try {
+    await redis.ping();
+    redisState = { ok: true, ms: Date.now() - started };
+  } catch {
+    redisState = { ok: false, ms: Date.now() - started };
+  }
+  res.json({ gateway: { ok: true }, redis: redisState, services: Object.fromEntries(entries) });
+});
+
 function isPublic(req) {
   return req.method === "POST" && ["/api/auth/register", "/api/auth/login"].includes(req.path);
 }

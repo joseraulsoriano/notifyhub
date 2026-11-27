@@ -126,6 +126,22 @@ app.post(
   }),
 );
 
+app.get(
+  "/projects/:projectId/members",
+  asyncRoute(async (req, res) => {
+    const actor = requireActor(req);
+    const { project } = await projectForUser(req.params.projectId, actor);
+    const { rows } = await pool.query(
+      `SELECT u.id, u.name, u.role, (u.id = $2) AS is_leader
+       FROM auth.users u
+       WHERE u.id = $2 OR u.id IN (SELECT user_id FROM tasks.project_members WHERE project_id = $1)
+       ORDER BY is_leader DESC, u.name ASC`,
+      [project.id, project.leader_id],
+    );
+    res.json({ members: rows });
+  }),
+);
+
 app.post(
   "/projects/:projectId/members",
   asyncRoute(async (req, res) => {
