@@ -1,6 +1,6 @@
 import { NotifyHubError } from '@notifyhub/client';
-import { describe, expect, it } from 'vitest';
-import { MESSAGE, answerRpc, isRpcMethod, type RpcMethod } from './bridge';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MESSAGE, answerRpc, isRpcMethod, shellOrigin, type RpcMethod } from './bridge';
 import { createDemoClient } from './demo-client';
 
 const request = (method: RpcMethod, args: unknown[] = []) => ({
@@ -51,5 +51,31 @@ describe('puente shell ↔ microfrontend', () => {
       method: 'nada.raro' as RpcMethod,
     });
     expect(result).toMatchObject({ ok: false, error: { status: 400 } });
+  });
+});
+
+describe('shellOrigin', () => {
+  const embed = (referrer: string) => {
+    const self = { parent: {} } as unknown as Window;
+    vi.stubGlobal('window', self);
+    vi.stubGlobal('document', { referrer });
+  };
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('usa el origen del referrer cuando el navegador lo entrega', () => {
+    embed('https://shell.test/notificaciones?x=1');
+    expect(shellOrigin()).toBe('https://shell.test');
+  });
+
+  it('cae al origen configurado si el referrer está oculto (Referrer-Policy: no-referrer)', () => {
+    embed('');
+    expect(shellOrigin()).toBe('http://localhost:4321');
+  });
+
+  it('es null cuando la página corre suelta', () => {
+    const self = {} as Window & { parent: unknown };
+    self.parent = self;
+    vi.stubGlobal('window', self);
+    expect(shellOrigin()).toBeNull();
   });
 });

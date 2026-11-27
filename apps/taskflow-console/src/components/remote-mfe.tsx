@@ -69,6 +69,8 @@ export function RemoteMfe({ name, src, title }: { name: string; src: string; tit
         title={title}
         src={src}
         data-microfrontend={name}
+        // El iframe debe poder decir quién es su shell aunque el documento use una política más estricta.
+        referrerPolicy="origin"
         className="block w-full border-0 bg-transparent transition-[height] duration-150"
         style={{ height }}
       />

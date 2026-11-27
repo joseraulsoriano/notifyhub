@@ -49,6 +49,10 @@ type SerializedError = {
 export const isRpcMethod = (value: unknown): value is RpcMethod =>
   typeof value === 'string' && (RPC_METHODS as readonly string[]).includes(value);
 
+const SHELL_URL: string =
+  import.meta.env.PUBLIC_SHELL_URL ??
+  (import.meta.env.PROD ? 'https://notifyhub-console.sc202357155.workers.dev' : 'http://localhost:4321');
+
 /** ¿Esta página corre dentro del shell? */
 export function isEmbedded(): boolean {
   if (typeof window === 'undefined') return false;
@@ -59,19 +63,26 @@ export function isEmbedded(): boolean {
   }
 }
 
-/** Origen del shell que embebe este MFE (del `referrer`), o `null` si corre suelto. */
+/**
+ * Origen del shell que embebe este MFE. Sale del `referrer`; si el navegador o una cabecera
+ * (`Referrer-Policy: no-referrer`) lo ocultan, se usa el origen configurado al compilar (`PUBLIC_SHELL_URL`).
+ * `null` solo si la página corre suelta.
+ */
 export function shellOrigin(): string | null {
-  if (!isEmbedded() || !document.referrer) return null;
+  if (!isEmbedded()) return null;
+  if (document.referrer) {
+    try {
+      return new URL(document.referrer).origin;
+    } catch {
+      /* referrer inválido: se usa el configurado */
+    }
+  }
   try {
-    return new URL(document.referrer).origin;
+    return new URL(SHELL_URL).origin;
   } catch {
     return null;
   }
 }
-
-const SHELL_URL: string =
-  import.meta.env.PUBLIC_SHELL_URL ??
-  (import.meta.env.PROD ? 'https://notifyhub-console.sc202357155.workers.dev' : 'http://localhost:4321');
 
 /**
  * Enlace a una ruta del shell (`/notificaciones`, `/nueva`…). Las rutas siempre son del shell: así la URL
