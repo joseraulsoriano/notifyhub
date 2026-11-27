@@ -94,14 +94,16 @@ services:
       - fromGroup: taskflow-shared
       - key: REDIS_URL
         fromService: { type: keyvalue, name: taskflow-redis, property: connectionString }
+      # Los servicios web gratuitos de Render no se resuelven por nombre en la red privada (ENOTFOUND), así
+      # que el gateway los llama por su URL pública. Siguen protegidos: exigen el INTERNAL_TOKEN.
       - key: AUTH_URL
-        fromService: { type: web, name: taskflow-auth, property: hostport }
+        value: https://taskflow-auth-r5qc.onrender.com
       - key: TASK_URL
-        fromService: { type: web, name: taskflow-tasks, property: hostport }
+        value: https://taskflow-tasks-blvu.onrender.com
       - key: NOTIFICATION_URL
-        fromService: { type: web, name: taskflow-notifications, property: hostport }
+        value: https://taskflow-notifications-r9n0.onrender.com
       - key: PRESENCE_URL
-        fromService: { type: web, name: taskflow-presence, property: hostport }
+        value: https://taskflow-presence.onrender.com
       # Orígenes del frontend (Cloudflare) que pueden llamar al gateway desde el navegador.
       - key: CORS_ORIGINS
         value: https://taskflow-console.sc202357155.workers.dev,https://taskflow-mfe-projects.sc202357155.workers.dev,https://taskflow-mfe-team.sc202357155.workers.dev
