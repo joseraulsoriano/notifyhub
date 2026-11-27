@@ -3,7 +3,8 @@ import { NotifyHubError, type NotifyHubClient } from '@notifyhub/client';
 /**
  * Contrato entre el shell (`apps/console`) y los microfrontends embebidos en `iframe`.
  *
- * MFE → shell: `ready`, `height` (alto del contenido), `navigate` (ir a otra ruta del shell) y `rpc`
+ * MFE → shell: `ready`, `height` (alto del contenido), `navigate` (ir a otra ruta del shell), `notify`
+ * (aviso para el módulo de notificaciones del shell) y `rpc`
  * (llamada al cliente demo del shell). Shell → MFE: `connection` y `rpc-result`.
  * Cada lado valida el origen y la ventana que envía; la API key nunca viaja en una URL.
  */
@@ -11,6 +12,7 @@ export const MESSAGE = {
   ready: 'notifyhub:mfe-ready',
   height: 'notifyhub:mfe-height',
   navigate: 'notifyhub:navigate',
+  notify: 'notifyhub:notify',
   rpc: 'notifyhub:rpc',
   rpcResult: 'notifyhub:rpc-result',
   connection: 'notifyhub:connection',

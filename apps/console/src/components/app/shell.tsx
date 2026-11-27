@@ -4,6 +4,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from '@notifyhub/mfe-ru
 import { Toaster } from '@notifyhub/mfe-runtime/ui/sonner';
 import { AppSidebar } from './app-sidebar';
 import { ConnectionButton } from '@notifyhub/mfe-runtime';
+import { NotificationCenter } from './notification-center';
 
 const CRUMB: Record<string, string> = {
   '/': 'Resumen',
@@ -31,6 +32,7 @@ function Topbar({ path }: { path: string }) {
         </kbd>
       </button>
       <div className="ml-auto flex items-center gap-3 lg:ml-0">
+        <NotificationCenter />
         <ConnectionButton />
       </div>
     </header>

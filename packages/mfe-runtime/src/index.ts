@@ -23,6 +23,25 @@ export {
   type RpcRequest,
   type RpcResult,
 } from './lib/bridge';
+export { notify, showToast } from './lib/notify';
+export {
+  DEFAULT_TTL_SECONDS,
+  NOTIFY_CHANNEL,
+  NOTIFY_EVENT,
+  SEVERITIES,
+  isExpired,
+  isInternalPath,
+  parseNotification,
+  type AppNotification,
+  type NotifyInput,
+  type Severity,
+} from './lib/notification-contract';
+export {
+  createNotificationStore,
+  openBrowserChannel,
+  type NotificationState,
+  type NotificationStore,
+} from './lib/notification-store';
 export { Page } from './components/page';
 export { LoadError, PageHeader } from './components/page-header';
 export { FilterSelect } from './components/filter-select';

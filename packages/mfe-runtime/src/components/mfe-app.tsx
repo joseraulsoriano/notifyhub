@@ -31,8 +31,8 @@ export function MfeApp({ title, children }: { title: string; children: ReactNode
   if (embedded)
     return (
       <>
+        {/* Sin Toaster propio: los avisos van al módulo de notificaciones del shell (`notify`). */}
         <div className="px-px pb-6">{children}</div>
-        <Toaster position="top-center" />
       </>
     );
 

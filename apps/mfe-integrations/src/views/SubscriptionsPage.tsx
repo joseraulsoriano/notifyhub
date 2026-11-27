@@ -5,7 +5,7 @@ import type {
 } from '@notifyhub/client';
 import { Info, Plus, Webhook } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { toast } from 'sonner';
+import { notify } from '@notifyhub/mfe-runtime';
 import { Badge } from '@notifyhub/mfe-runtime/ui/badge';
 import { Button } from '@notifyhub/mfe-runtime/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@notifyhub/mfe-runtime/ui/card';
@@ -82,10 +82,10 @@ function SubscriptionsView() {
       setUrl(DEFAULT_WEBHOOK_URL);
       setEvents(['notification.status_changed']);
       setFormOpen(false);
-      toast.success('Suscripción registrada');
+      notify.success('Suscripción registrada');
       await load();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'No se pudo crear la suscripción');
+      notify.error(error instanceof Error ? error.message : 'No se pudo crear la suscripción');
     } finally {
       setSaving(false);
     }
@@ -96,7 +96,7 @@ function SubscriptionsView() {
       const updated = await client.subscriptions.setActive(subscription.id, active);
       setSubscriptions((items) => items.map((item) => (item.id === updated.id ? updated : item)));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'No se pudo actualizar la suscripción');
+      notify.error(error instanceof Error ? error.message : 'No se pudo actualizar la suscripción');
     }
   };
 

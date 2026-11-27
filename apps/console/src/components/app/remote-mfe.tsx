@@ -1,4 +1,11 @@
-import { MESSAGE, answerRpc, isRpcMethod, useConnection } from '@notifyhub/mfe-runtime';
+import {
+  MESSAGE,
+  NOTIFY_EVENT,
+  answerRpc,
+  isRpcMethod,
+  parseNotification,
+  useConnection,
+} from '@notifyhub/mfe-runtime';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 type RemoteMfeProps = { name: string; src: string; title: string };
@@ -51,6 +58,12 @@ export function RemoteMfe({ name, src, title }: RemoteMfeProps) {
           if (typeof data.path === 'string' && data.path.startsWith('/') && !data.path.startsWith('//'))
             window.location.assign(data.path);
           break;
+        case MESSAGE.notify: {
+          // `sourceMfe` lo fija el shell con el nombre del iframe: un MFE no puede hacerse pasar por otro.
+          const item = parseNotification(data.payload, { sourceMfe: name });
+          if (item) window.dispatchEvent(new CustomEvent(NOTIFY_EVENT, { detail: item }));
+          break;
+        }
         case MESSAGE.rpc:
           // Solo en demo: conectado a la API real, cada MFE le habla a la API directamente.
           if (connection.mode !== 'demo' || typeof data.id !== 'string' || !isRpcMethod(data.method)) return;
@@ -70,7 +83,7 @@ export function RemoteMfe({ name, src, title }: RemoteMfeProps) {
     // Si la conexión cambia con el MFE ya cargado (p. ej. al conectar la API), se le avisa de inmediato.
     if (ready.current) sendConnection();
     return () => window.removeEventListener('message', receive);
-  }, [url, connection, client]);
+  }, [url, connection, client, name]);
 
   useEffect(() => {
     if (state !== 'loading') return;

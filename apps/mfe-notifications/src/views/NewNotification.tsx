@@ -10,7 +10,7 @@ import {
 } from '@notifyhub/ui';
 import { Send } from 'lucide-react';
 import { useState } from 'react';
-import { toast } from 'sonner';
+import { notify } from '@notifyhub/mfe-runtime';
 import { Button } from '@notifyhub/mfe-runtime/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@notifyhub/mfe-runtime/ui/card';
 import { Input } from '@notifyhub/mfe-runtime/ui/input';
@@ -76,7 +76,7 @@ function NewView() {
     setProblems([]);
     try {
       const created = await client.notifications.create(payload, { idempotencyKey: key });
-      toast.success(
+      notify.success(
         created.replayed
           ? 'Ya existía una solicitud con esa Idempotency-Key'
           : 'Solicitud aceptada · 202 · encolada',

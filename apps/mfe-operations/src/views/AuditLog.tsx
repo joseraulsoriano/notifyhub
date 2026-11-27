@@ -2,7 +2,7 @@ import type { AuditEntry } from '@notifyhub/client';
 import { ChannelTag, StatusBadge, useAuditLog } from '@notifyhub/ui';
 import { Download, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { toast } from 'sonner';
+import { notify } from '@notifyhub/mfe-runtime';
 import { Badge } from '@notifyhub/mfe-runtime/ui/badge';
 import { Button } from '@notifyhub/mfe-runtime/ui/button';
 import { Card } from '@notifyhub/mfe-runtime/ui/card';
@@ -78,7 +78,7 @@ function AuditView() {
     const url = URL.createObjectURL(new Blob([toCsv(rows)], { type: 'text/csv' }));
     Object.assign(document.createElement('a'), { href: url, download: 'bitacora.csv' }).click();
     URL.revokeObjectURL(url);
-    toast.success(`${rows.length} filas exportadas`);
+    notify.success(`${rows.length} filas exportadas`);
   };
 
   return (

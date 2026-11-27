@@ -27,7 +27,7 @@ import { FilterSelect } from '@notifyhub/mfe-runtime';
 import { NotificationPanel, NotificationSheet } from '@notifyhub/mfe-runtime';
 import { Page } from '@notifyhub/mfe-runtime';
 import { LoadError, PageHeader } from '@notifyhub/mfe-runtime';
-import { toast } from 'sonner';
+import { notify } from '@notifyhub/mfe-runtime';
 
 const ALL = 'all';
 const withAll = (label: string, o: Record<string, string>) => [
@@ -116,8 +116,8 @@ function NotificationsView() {
 
     const accepted = results.filter((result) => result.status === 'fulfilled').length;
     const failed = results.length - accepted;
-    if (failed > 0) toast.error(`Se aceptaron ${accepted} de 6 solicitudes; ${failed} fallaron.`);
-    else toast.success('Se aceptaron 6 solicitudes. Observa su avance en la lista.');
+    if (failed > 0) notify.error(`Se aceptaron ${accepted} de 6 solicitudes; ${failed} fallaron.`);
+    else notify.success('Se aceptaron 6 solicitudes. Observa su avance en la lista.');
   };
 
   const base = useMemo(

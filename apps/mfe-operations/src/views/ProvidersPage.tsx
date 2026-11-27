@@ -14,7 +14,7 @@ import {
   useProviders,
 } from '@notifyhub/ui';
 import { Info } from 'lucide-react';
-import { toast } from 'sonner';
+import { notify } from '@notifyhub/mfe-runtime';
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@notifyhub/mfe-runtime/ui/card';
 import { Switch } from '@notifyhub/mfe-runtime/ui/switch';
@@ -70,12 +70,12 @@ function ProvidersView() {
   const update = async (code: string, patch: { health?: ProviderHealth; enabled?: boolean }) => {
     try {
       await client.providers.update(code, patch);
-      toast.success(
+      notify.success(
         `${code}: ${patch.health ? HEALTHS.find((h) => h.value === patch.health)!.label.toLowerCase() : patch.enabled ? 'habilitado' : 'deshabilitado'}`,
       );
       await refresh();
     } catch (e) {
-      toast.error(
+      notify.error(
         e instanceof NotifyHubError && e.status === 403
           ? 'Esta API key no puede modificar proveedores (PROVIDER_ADMIN_CLIENTS)'
           : e instanceof Error

@@ -8,24 +8,24 @@ el entorno local y explica cómo validar el flujo antes de desplegar.
 
 ## Qué está conectado
 
-| Pieza              | Dónde                                                                      | Estado                                |
-| ------------------ | -------------------------------------------------------------------------- | ------------------------------------- |
-| Código y CI        | GitHub `joseraulsoriano/notifyhub` (público)                               | ✅                                    |
-| Worker             | tu cuenta de Cloudflare (plan gratuito), Worker `notifyhub-api`            | ✅ desplegado                         |
-| Colas              | Queues `notifications-high`, `-medium`, `-low`                             | ✅ creadas                            |
-| Pool a Postgres    | Hyperdrive `notifyhub` (su id va en `wrangler.jsonc`; usa el de tu cuenta) | ✅ creado                             |
-| Rate limit         | Durable Object `RateLimiterObject` (SQLite), se crea con el deploy         | ✅ desplegado                         |
-| Postgres           | Neon, proyecto `notifyhub`, `aws-us-east-1`, PG 18                         | ✅ migrado y sembrado                 |
-| Despachador        | Worker `notifyhub-dispatcher`, consume las tres colas                      | ✅ desplegado                         |
-| Event relay        | Worker `notifyhub-event-relay`, Cron y queue de webhooks                   | configurado; despliegue por verificar |
-| Webhook inbox      | Worker público `notify`, verifica firmas y muestra eventos en Logs         | configurado; despliegue por verificar |
-| Shell consola      | Worker `notifyhub-console` (navegación y composición)                      | configurado; despliegue por verificar |
-| MFE dashboard      | Worker `notifyhub-mfe-dashboard`                                           | configurado; despliegue por verificar |
-| MFE notificaciones | Worker `notifyhub-mfe-notifications`                                       | configurado; despliegue por verificar |
-| MFE operaciones    | Worker `notifyhub-mfe-operations`                                          | configurado; despliegue por verificar |
-| MFE integraciones  | Worker `notifyhub-mfe-integrations`                                        | configurado; despliegue por verificar |
-| Tienda demo        | Worker `notifyhub-demo-store` o Vercel `notifyhub-demo-store`              | opcional                              |
-| Tablero            | Jira `arquitectura-so`, proyecto SCRUM                                     | ✅ al día                             |
+| Pieza              | Dónde                                                                      | Estado                   |
+| ------------------ | -------------------------------------------------------------------------- | ------------------------ |
+| Código y CI        | GitHub `joseraulsoriano/notifyhub` (público)                               | ✅                       |
+| Worker             | tu cuenta de Cloudflare (plan gratuito), Worker `notifyhub-api`            | ✅ desplegado            |
+| Colas              | Queues `notifications-high`, `-medium`, `-low`                             | ✅ creadas               |
+| Pool a Postgres    | Hyperdrive `notifyhub` (su id va en `wrangler.jsonc`; usa el de tu cuenta) | ✅ creado                |
+| Rate limit         | Durable Object `RateLimiterObject` (SQLite), se crea con el deploy         | ✅ desplegado            |
+| Postgres           | Neon, proyecto `notifyhub`, `aws-us-east-1`, PG 18                         | ✅ migrado y sembrado    |
+| Despachador        | Worker `notifyhub-dispatcher`, consume las tres colas                      | ✅ desplegado            |
+| Event relay        | Worker `notifyhub-event-relay`, Cron y queue de webhooks                   | desplegado (27-nov-2026) |
+| Webhook inbox      | Worker público `notify`, verifica firmas y muestra eventos en Logs         | desplegado (27-nov-2026) |
+| Shell consola      | Worker `notifyhub-console` (navegación y composición)                      | desplegado (27-nov-2026) |
+| MFE dashboard      | Worker `notifyhub-mfe-dashboard`                                           | desplegado (27-nov-2026) |
+| MFE notificaciones | Worker `notifyhub-mfe-notifications`                                       | desplegado (27-nov-2026) |
+| MFE operaciones    | Worker `notifyhub-mfe-operations`                                          | desplegado (27-nov-2026) |
+| MFE integraciones  | Worker `notifyhub-mfe-integrations`                                        | desplegado (27-nov-2026) |
+| Tienda demo        | Worker `notifyhub-demo-store` o Vercel `notifyhub-demo-store`              | opcional                 |
+| Tablero            | Jira `arquitectura-so`, proyecto SCRUM                                     | ✅ al día                |
 
 Límites del plan gratuito que importan: 100,000 peticiones/día al Worker, 10,000 operaciones/día de Queues (unas
 3,300 notificaciones) y 100,000 consultas/día por Hyperdrive.
