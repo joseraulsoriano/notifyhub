@@ -1,4 +1,4 @@
-# ADR-004 · Eventos con Observer, outbox transaccional y Redis Streams
+# ADR-004 · Eventos con Observer, outbox transaccional y Queues
 
 - **Estado:** aceptada · 2026-10-01 · NH-2 (SCRUM-10) · _sustituida en parte por [ADR-007](0007-workers-nativo.md): Redis Streams → Queues_
 
@@ -12,7 +12,7 @@ el evento, el evento no debe perderse.
 - Dentro del proceso, **Observer**: `EventPublisher` notifica a `AuditLogSubscriber`, `MetricsSubscriber` y
   `OutboxSubscriber`, sin que el despachador conozca a ninguno.
 - Hacia fuera, **Transactional Outbox**: el evento se escribe en `outbox_event` en la misma transacción que el cambio
-  de estado; `apps/event-relay` lo publica en **Redis Streams** y lo entrega por webhook firmado a los suscriptores.
+  de estado; `apps/event-relay` lo publica en **Cloudflare Queues** y lo entrega por webhook firmado a los suscriptores.
 - El bus queda detrás de un puerto para migrar a Kafka o NATS si el volumen lo pide.
 
 ## Consecuencias

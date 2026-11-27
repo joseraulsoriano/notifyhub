@@ -4,8 +4,12 @@ coverage
 pnpm-lock.yaml
 docs/diagrams/render
 docs/planeacion
-apps/api/worker-configuration.d.ts
-apps/dispatcher/worker-configuration.d.ts
+**/worker-configuration.d.ts
+apps/demo-store/vercel/api
+.vercel
+version-2
+.pnpm-store
 .wrangler
 .astro
 .gstack
+.claude/settings.local.json

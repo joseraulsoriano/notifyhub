@@ -9,6 +9,7 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev --filter=@notifyhub/api",
+    "dev:console": "turbo run dev --filter=@notifyhub/console --filter='@notifyhub/mfe-*'",
     "test": "turbo run test",
     "lint": "eslint .",
     "format": "prettier --write .",

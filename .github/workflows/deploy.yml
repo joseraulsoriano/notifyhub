@@ -22,6 +22,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm turbo run build --filter=@notifyhub/persistence... --filter=@notifyhub/shared
+      - run: pnpm --filter @notifyhub/event-relay run build
+      - run: pnpm --filter @notifyhub/webhook-inbox run build
       - name: Migraciones en Neon
         run: pnpm --filter @notifyhub/persistence db:deploy
         env:
@@ -31,3 +33,59 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Ensure webhook delivery queue
+        run: |
+          if ! pnpm --filter @notifyhub/event-relay exec wrangler queues info webhook-deliveries >/dev/null 2>&1; then
+            pnpm --filter @notifyhub/event-relay exec wrangler queues create webhook-deliveries
+          fi
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Deploy webhook inbox
+        run: pnpm --filter @notifyhub/webhook-inbox run deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Deploy webhook event relay
+        run: pnpm --filter @notifyhub/event-relay run deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Deploy dashboard microfrontend
+        run: pnpm --filter @notifyhub/mfe-dashboard run deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PUBLIC_NOTIFYHUB_API_URL: https://notifyhub-api.sc202357155.workers.dev
+          PUBLIC_SHELL_URL: https://notifyhub-console.sc202357155.workers.dev
+      - name: Deploy notifications microfrontend
+        run: pnpm --filter @notifyhub/mfe-notifications run deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PUBLIC_NOTIFYHUB_API_URL: https://notifyhub-api.sc202357155.workers.dev
+          PUBLIC_SHELL_URL: https://notifyhub-console.sc202357155.workers.dev
+      - name: Deploy operations microfrontend
+        run: pnpm --filter @notifyhub/mfe-operations run deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PUBLIC_NOTIFYHUB_API_URL: https://notifyhub-api.sc202357155.workers.dev
+          PUBLIC_SHELL_URL: https://notifyhub-console.sc202357155.workers.dev
+      - name: Deploy integrations microfrontend
+        run: pnpm --filter @notifyhub/mfe-integrations run deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PUBLIC_NOTIFYHUB_API_URL: https://notifyhub-api.sc202357155.workers.dev
+          PUBLIC_SHELL_URL: https://notifyhub-console.sc202357155.workers.dev
+      - name: Deploy console shell
+        run: pnpm --filter @notifyhub/console run deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PUBLIC_NOTIFYHUB_API_URL: https://notifyhub-api.sc202357155.workers.dev
+          PUBLIC_MFE_DASHBOARD_URL: https://notifyhub-mfe-dashboard.sc202357155.workers.dev
+          PUBLIC_MFE_NOTIFICATIONS_URL: https://notifyhub-mfe-notifications.sc202357155.workers.dev
+          PUBLIC_MFE_OPERATIONS_URL: https://notifyhub-mfe-operations.sc202357155.workers.dev
+          PUBLIC_MFE_INTEGRATIONS_URL: https://notifyhub-mfe-integrations.sc202357155.workers.dev

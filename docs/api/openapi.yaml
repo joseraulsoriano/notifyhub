@@ -289,8 +289,9 @@ paths:
       operationId: createSubscription
       summary: Registrar una suscripción
       description: |
-        Guarda configuración y devuelve un secreto de firma una sola vez. No inicia entregas: el relay
-        outbox→webhook aún no está desplegado.
+        Guarda configuración y devuelve un secreto de firma una sola vez. Los eventos configurados se entregan
+        al menos una vez mediante POST firmado. Se envían `X-Signature: sha256=<hex>`,
+        `X-NotifyHub-Event-Id` y `X-NotifyHub-Subscription-Id`; los receptores deben deduplicar por el id del evento.
       requestBody:
         required: true
         content:
@@ -307,7 +308,11 @@ paths:
                   - type: object
                     required: [signingSecret]
                     properties:
-                      signingSecret: { type: string, description: Secreto de firma mostrado solo al crearlo }
+                      signingSecret:
+                        {
+                          type: string,
+                          description: 'Secreto de firma mostrado solo al crearlo. Para verificar X-Signature, calcula SHA-256 del secreto y usa esos 32 bytes como clave HMAC-SHA256 del cuerpo HTTP exacto.',
+                        }
         '400': { $ref: '#/components/responses/ValidationError' }
         '401': { $ref: '#/components/responses/Unauthorized' }
 

@@ -7,7 +7,8 @@ cada intento. Proyecto de Arquitectura de Software construido alrededor de los p
 
 ![ruta de un mensaje: tres intentos en Push y transbordo a SMS](docs/screens/02-notificacion-fallback.png)
 
-**¿Es tu primera vez con el repositorio?** Empieza por la [guía del proyecto](docs/guia-del-proyecto.md): explica
+**¿Es tu primera vez con el repositorio?** Empieza por la [arquitectura actual](docs/arquitectura-actual.md) y la
+[guía del proyecto](docs/guia-del-proyecto.md): explican
 requisitos, configuración local paso a paso, arquitectura, prueba de concurrencia y despliegue. Esta guía evita
 confundir el modo demo de la consola con la API local o con los recursos de producción.
 
@@ -23,7 +24,7 @@ confundir el modo demo de la consola con la API local o con los recursos de prod
 | S1 · RF1        | 12 – 23 oct    | Monorepo, entorno local, CI, recepción y consulta de notificaciones | 🟡 Implementado, en revisión; incluye consola web y librerías |
 | S2 · RF2        | 26 oct – 6 nov | Factory Method y adaptadores de proveedores, worker despachador     | 🟡 MVP del despachador en revisión (proveedores simulados)    |
 | S3 · RF3 + RF4  | 9 – 20 nov     | Strategy, fallback, circuit breaker y bitácora                      | 🟡 Strategy, fallback y consulta de bitácora en revisión      |
-| S4 · RF5        | 23 nov – 4 dic | Observer, outbox, dashboards, carga y entrega final                 | ⏳                                                            |
+| S4 · RF5        | 23 nov – 4 dic | Observer, outbox, relay de eventos, webhooks y entrega final        | 🟡 Implementado en código; despliegue final por verificar     |
 
 Detalle por historia en [docs/avance.md](docs/avance.md).
 
@@ -37,8 +38,8 @@ pnpm install
 pnpm demo:local
 ```
 
-El segundo comando levanta PostgreSQL, prepara la base y arranca API, despachador y consola juntos. Conecta la
-consola a `http://localhost:8787` con la llave `nh_dev_local_key`. Para usar otra ventana del navegador, conecta
+El segundo comando levanta PostgreSQL, API, despachador, shell de consola, cuatro microfrontends y tienda demo juntos.
+Conecta el shell a `http://localhost:8787` con la llave `nh_dev_local_key`. Para usar otra ventana del navegador, conecta
 esa ventana también; cada pestaña guarda su conexión por separado, pero las notificaciones de la API local sí se
 comparten en PostgreSQL. El modo demo es independiente por pestaña. La guía explica el recorrido local y la
 arquitectura en [Guía del proyecto](docs/guia-del-proyecto.md). `pnpm dev` sigue siendo solo el servidor API.
@@ -102,16 +103,20 @@ const { id } = await notifyhub.notifications.create(
 console.log((await notifyhub.notifications.get(id)).attempts); // intentos y fallback
 ```
 
-La **consola web** ([`apps/console`](apps/console)) es la aplicación de referencia que usa ambos paquetes. Sin conexión funciona en
-modo demo, con un cliente simulado que cumple la misma interfaz.
+La **consola web** ([`apps/console`](apps/console)) es el shell de navegación. Sus módulos están separados por dominio
+en `apps/mfe-dashboard`, `apps/mfe-notifications`, `apps/mfe-operations` y `apps/mfe-integrations`; todos usan el
+kit compartido `@notifyhub/mfe-runtime` (mismo diseño, conexión y cliente demo) y se comunican con el shell mediante
+`postMessage`. Para ver solo el frontend en modo demo, sin Docker: `pnpm dev:console` y abre `http://localhost:4321`.
+Detalle en [Arquitectura actual](docs/arquitectura-actual.md).
 
 ## Qué es real y qué es simulado
 
 - **Real:** recepción con idempotencia y límite de solicitudes, colas por prioridad, máquina de estados, reintentos con
-  backoff, fallback entre canales, intentos y bitácora en Postgres, API de consulta, SDK y consola.
+  backoff, fallback entre canales, intentos y bitácora en Postgres, API de consulta, SDK, shell y microfrontends.
 - **Simulado:** los proveedores (SendGrid, Twilio, FCM y webhook). Su comportamiento sale de `provider.health` (`UP`, `DEGRADED`,
   `DOWN`) para poder demostrar el fallback sin credenciales. Los adaptadores reales son SCRUM-29 a SCRUM-32.
-- **Pendiente:** outbox y suscripciones por webhook (RF5), circuit breaker, health checks activos y barrido de rezagados.
+- **Pendiente:** validar el despliegue de los nuevos Workers frontend en la cuenta objetivo, además de circuit breaker,
+  health checks activos y barrido de rezagados.
 
 ## Estructura
 
@@ -119,8 +124,14 @@ modo demo, con un cliente simulado que cumple la misma interfaz.
 apps/
   api/            Worker Hono: recepción, consulta, listado, proveedores y bitácora
   dispatcher/     Worker consumidor de Queues: despacho, reintentos y fallback
-  console/        Consola web (Astro + React + shadcn/ui), usa client y ui
-  event-relay/    outbox → cola de eventos → webhooks (RF5)            ← S4
+  console/        Shell Astro: navegación, conexión y composición de MFEs
+  mfe-dashboard/  Microfrontend de resumen y métricas
+  mfe-notifications/ Microfrontend de lista y creación de notificaciones
+  mfe-operations/ Microfrontend de proveedores y bitácora
+  mfe-integrations/ Microfrontend de suscripciones y webhooks
+  event-relay/    outbox → cola de eventos → webhooks (RF5)
+  webhook-inbox/  receptor público de webhooks firmado para pruebas
+  demo-store/     tienda demo que consume la API; opcional
 packages/
   domain/         entidades, estados y errores; sin dependencias
   application/    casos de uso, puertos y despacho (Strategy, Factory, Observer)
@@ -128,7 +139,8 @@ packages/
   persistence/    esquema y migraciones Prisma; repositorios con pg
   shared/         configuración validada y nombres de colas
   client/         @notifyhub/client · SDK de TypeScript
-  ui/             @notifyhub/ui · componentes React y tokens de diseño
+  ui/             @notifyhub/ui · componentes React de notificaciones y tokens de diseño
+  mfe-runtime/    kit del shell y los MFEs: diseño, conexión, cliente demo y puente postMessage
 config/routing.yaml   referencia de proveedores/estrategias; runtime en application/src/dispatch/routing-config.ts
 infra/                Docker Compose (Postgres y herramientas), mocks de WireMock
 docs/                 ADRs, diagramas Mermaid, OpenAPI, riesgos y pruebas
@@ -140,7 +152,7 @@ docs/                 ADRs, diagramas Mermaid, OpenAPI, riesgos y pruebas
 | Template Method / Adapter           | `packages/providers`: `BaseSender` y un emisor por proveedor                                               | MVP      |
 | Strategy                            | `dispatch/strategies.ts`: `CostStrategy`, `PriorityStrategy`, `AvailabilityStrategy`                       | MVP      |
 | Chain of Responsibility / Decorator | `FallbackPolicy` y reintentos (circuit breaker pendiente)                                                  | MVP / S3 |
-| Observer                            | `dispatch/event-publisher.ts`: `EventPublisher` (outbox y suscriptores: S4)                                | MVP / S4 |
+| Observer                            | `dispatch/event-publisher.ts`: `EventPublisher`; relay de outbox en `apps/event-relay`                     | MVP / S4 |
 
 ### Diagramas
 
@@ -191,7 +203,7 @@ Fuente Mermaid en [docs/diagrams](docs/diagrams). Para regenerar una imagen desd
 
 ![Diagrama de navegación](docs/diagrams/render/11-navegacion.png)
 
-Informe con todos los diagramas explicados, la arquitectura y la metodología: [docs/informe/notifyhub.pdf](docs/informe/notifyhub.pdf)
+Informe con todos los diagramas explicados, la arquitectura y la metodología: fuente en [docs/informe/notifyhub.tex](docs/informe/notifyhub.tex). El PDF se genera en local con `cd docs/informe && latexmk -xelatex notifyhub.tex` y no se sube al repositorio.
 (fuente LaTeX en la misma carpeta; `latexmk -lualatex notifyhub.tex`).
 
 ## Comandos

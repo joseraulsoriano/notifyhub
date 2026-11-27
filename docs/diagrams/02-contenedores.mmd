@@ -2,31 +2,43 @@ flowchart TB
   cli["Aplicaciones cliente"]
   ops["Operación y soporte"]
   subgraph NH["NotifyHub"]
-    con["Consola web<br/>Astro · sitio estático"]
+    kit["mfe-runtime<br/>kit de diseño y puente"]
+    shell["Console shell<br/>Astro · barra lateral y conexión"]
+    dash["MFE dashboard<br/>Worker independiente"]
+    notif["MFE notificaciones<br/>Worker independiente"]
+    opsmfe["MFE operaciones<br/>Worker independiente"]
+    integ["MFE integraciones<br/>Worker independiente"]
     api["API REST<br/>Worker Hono · RF1"]
     q[("Cloudflare Queues<br/>colas alta / media / baja")]
     disp["Dispatcher<br/>Worker consumidor<br/>Factory Method + Strategy<br/>RF2 · RF3"]
     db[("PostgreSQL<br/>notificaciones, intentos,<br/>bitácora, outbox · RF4")]
-    relay["Event relay<br/>outbox → cola de eventos · RF5"]
-    bus[("Cloudflare Queues<br/>cola de eventos")]
-    subw["Subscriber worker<br/>webhooks a suscriptores"]
+    relay["Event relay<br/>outbox → webhooks firmados · RF5"]
+    bus[("Cloudflare Queues<br/>webhook-deliveries")]
   end
   prov["Proveedores<br/>SendGrid · Twilio · FCM · Webhook"]
   subs["Servicios suscriptores"]
-  otel["OpenTelemetry Collector"]
+  otel["OpenTelemetry Collector<br/>(planeado · ADR-005)"]
   graf["Grafana<br/>Prometheus · Loki · Tempo"]
   cli --> api
-  ops --> con
-  con --> api
+  ops --> shell
+  shell --> dash
+  shell --> notif
+  shell --> opsmfe
+  shell --> integ
+  dash --> api
+  notif --> api
+  opsmfe --> api
+  integ --> api
+  kit -.- shell
+  kit -.- dash
   api --> db
   api --> q
   q --> disp
   disp --> prov
   disp --> db
   db --> relay
-  relay --> bus
-  bus --> subw
-  subw --> subs
+  relay <-->|publica / consume| bus
+  relay -->|POST firmado| subs
   api -.-> otel
   disp -.-> otel
   relay -.-> otel

@@ -13,8 +13,10 @@ export default tseslint.config(
       '**/.wrangler/**',
       '**/.astro/**',
       '**/.gstack/**',
-      'apps/api/worker-configuration.d.ts',
-      'apps/dispatcher/worker-configuration.d.ts',
+      '**/worker-configuration.d.ts',
+      'apps/demo-store/vercel/api/**',
+      // Proyecto independiente (TaskFlow) con su propio tooling; no forma parte del monorepo.
+      'version-2/**',
     ],
   },
   js.configs.recommended,
@@ -25,6 +27,22 @@ export default tseslint.config(
       '@typescript-eslint/consistent-type-imports': 'error',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
+  },
+  {
+    // Scripts CommonJS de Node que generan la presentación.
+    files: ['**/*.cjs'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: {
+        require: 'readonly',
+        module: 'writable',
+        __dirname: 'readonly',
+        process: 'readonly',
+        console: 'readonly',
+        Buffer: 'readonly',
+      },
+    },
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
   },
   {
     // Regla de dependencias del ADR-001: domain no importa nada y application solo importa domain.

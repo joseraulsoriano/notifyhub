@@ -35,7 +35,8 @@ pnpm demo:local
 ```
 
 `pnpm install` se hace una vez después de clonar o cambiar dependencias. Después, **un solo comando** arranca la
-base, aplica las migraciones, crea el cliente y los proveedores de prueba y levanta API + despachador + consola.
+base, aplica las migraciones, crea el cliente y los proveedores de prueba y levanta API, despachador, shell de
+consola, cuatro microfrontends y tienda demo.
 Necesitas Docker Desktop instalado y el puerto `5432` libre. Si no existe `.env`, el comando lo crea desde
 `.env.example`. Para que la demo no toque una base remota por error, migrations y seed siempre fuerzan el Postgres
 local del Compose (`127.0.0.1:5432`) y el API key `nh_dev_local_key`, aunque tu `.env` tenga otra `DATABASE_URL`.
@@ -115,10 +116,11 @@ NotifyHub combina varias perspectivas; no son alternativas excluyentes:
 - **Arquitectura dirigida por eventos:** describe el flujo de una solicitud aceptada. La API la persiste y publica
   un trabajo en una Queue; el despachador procesa el trabajo y registra cambios de estado e intentos. El patrón
   Observer publica eventos de despacho. Esto no significa que cada capa sea un microservicio.
-- **Servicios distribuidos/serverless:** la API y el despachador son Workers separados, y la consola es un frontend
-  estático. Son unidades desplegables separadas; para este proyecto, esta descripción es más precisa que afirmar que
-  todo el sistema es un conjunto amplio de microservicios.
-- **Microfrontends:** no aplica; existe una única consola web.
+- **Servicios distribuidos/serverless:** la API, el despachador, el relay y el receptor de webhooks son Workers
+  separados. Comparten PostgreSQL/Neon y paquetes de dominio, así que esta separación no implica microservicios
+  autónomos con una base por servicio.
+- **Microfrontends:** sí aplica al frontend. `apps/console` es el shell y `apps/mfe-*` son módulos independientes por
+  dominio, montados por ruta mediante `iframe` y coordinados con `postMessage`.
 
 ```mermaid
 flowchart LR
@@ -156,16 +158,16 @@ Las opciones describen niveles distintos, por eso NotifyHub combina varias en lu
   desde Cloudflare Queues. Esto evita que una petición HTTP tenga que esperar reintentos y respuesta del proveedor,
   absorbe picos y permite límites/reintentos independientes. Queue entrega al menos una vez, por eso el despacho
   usa claims de propiedad e idempotencia para evitar procesar simultáneamente la misma notificación.
-- **Workers separados como unidades de despliegue.** API y consumidor escalan/despliegan por separado, pero comparten
-  PostgreSQL y el estado del servicio. «Serverless/distribuida» es una descripción más precisa hoy que afirmar que
-  NotifyHub ya tiene microservicios autónomos con datos y ciclos de vida independientes.
-- **No es una arquitectura de microfrontends.** La consola es una aplicación web única, no varias aplicaciones UI
-  desplegadas por separado.
+- **Workers separados como unidades de despliegue.** API y consumidores escalan/despliegan por separado, pero
+  comparten PostgreSQL y el estado del servicio.
+- **Microfrontends por dominio.** El shell conserva navegación y conexión; dashboard, notificaciones, operaciones e
+  integraciones se compilan y despliegan como aplicaciones Astro/Workers independientes. La API key se entrega al
+  iframe mediante `postMessage` y nunca viaja en la URL.
 
 También se combinan patrones GoF con propósitos concretos: **Strategy** elige el orden de proveedores según
 prioridad; **Factory Method** crea el sender del proveedor; **Observer** desacopla al despachador de los
-consumidores internos de eventos. Los logs Observer están activos, pero el relay durable de outbox a webhooks
-suscritos aún no está implementado.
+consumidores internos de eventos. Los cambios de estado e intentos se escriben en un outbox transaccional y el
+Worker `apps/event-relay` entrega los eventos firmados a los webhooks activos con reintentos.
 
 ### Cómo se usa la API
 
@@ -230,37 +232,41 @@ Para que **Proveedores y ruteo** funcione en local:
 
 ### Dónde ver los patrones y requisitos
 
-| Concepto                                             | Código                                                                                 |
-| ---------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Factory Method y registro de emisores                | `packages/application/src/dispatch/sender-creator.ts`, `packages/providers/src/`       |
-| Strategy por prioridad                               | `packages/application/src/dispatch/strategies.ts`, `config/routing.yaml`               |
-| Observer y publicación de eventos                    | `packages/application/src/dispatch/event-publisher.ts`, `apps/dispatcher/src/index.ts` |
-| Registro de suscripciones (sin relay de entrega aún) | `apps/api/src/app.ts`, `packages/persistence/src/pg-subscription-repository.ts`        |
-| Reintentos y fallback                                | `packages/application/src/dispatch/dispatch-service.ts`                                |
-| Recepción, validación y encolado (RF1)               | `apps/api/src/app.ts`                                                                  |
-| Adaptadores de datos y Queue                         | `apps/api/src/infra/`, `packages/persistence/src/`                                     |
-| Consola                                              | `apps/console/src/`                                                                    |
+| Concepto                               | Código                                                                                               |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Factory Method y registro de emisores  | `packages/application/src/dispatch/sender-creator.ts`, `packages/providers/src/`                     |
+| Strategy por prioridad                 | `packages/application/src/dispatch/strategies.ts`, `config/routing.yaml`                             |
+| Observer y publicación de eventos      | `packages/application/src/dispatch/event-publisher.ts`, `apps/dispatcher/src/index.ts`               |
+| Registro y entrega de suscripciones    | `apps/api/src/app.ts`, `packages/persistence/src/pg-subscription-repository.ts`, `apps/event-relay/` |
+| Reintentos y fallback                  | `packages/application/src/dispatch/dispatch-service.ts`                                              |
+| Recepción, validación y encolado (RF1) | `apps/api/src/app.ts`                                                                                |
+| Adaptadores de datos y Queue           | `apps/api/src/infra/`, `packages/persistence/src/`                                                   |
+| Shell de consola y puente MFE          | `apps/console/src/`                                                                                  |
+| Microfrontends                         | `apps/mfe-dashboard/`, `apps/mfe-notifications/`, `apps/mfe-operations/`, `apps/mfe-integrations/`   |
 
 ## 5. Qué cambia al ejecutar en producción
 
 En local, Wrangler simula la ejecución de Workers, Queues y Durable Objects, y la configuración `localConnectionString`
 de Hyperdrive apunta a Docker. En producción:
 
-| Local                                            | Producción                                                   |
-| ------------------------------------------------ | ------------------------------------------------------------ |
-| API y dispatcher ejecutados por `wrangler dev`   | Workers `notifyhub-api` y `notifyhub-dispatcher` desplegados |
-| Queues simuladas por Wrangler                    | Queues Cloudflare `notifications-high/medium/low`            |
-| Postgres de Docker Compose                       | Postgres de Neon detrás de Hyperdrive                        |
-| Llave `nh_dev_local_key` y proveedores simulados | Llaves de producción y configuración protegida               |
-| Consola Astro en localhost                       | Consola estática desplegada como Worker                      |
+| Local                                            | Producción                                                                        |
+| ------------------------------------------------ | --------------------------------------------------------------------------------- |
+| API y dispatcher ejecutados por `wrangler dev`   | Workers `notifyhub-api` y `notifyhub-dispatcher` desplegados                      |
+| Relay e inbox de webhooks                        | Workers `notifyhub-event-relay` y `notify` configurados; despliegue por verificar |
+| Queues simuladas por Wrangler                    | Queues Cloudflare `notifications-high/medium/low`                                 |
+| Postgres de Docker Compose                       | Postgres de Neon detrás de Hyperdrive                                             |
+| Llave `nh_dev_local_key` y proveedores simulados | Llaves de producción y configuración protegida                                    |
+| Shell Astro en localhost                         | Worker estático `notifyhub-console`                                               |
+| Microfrontends en localhost                      | Workers/servidores Astro en puertos `4331`–`4334`                                 |
+| Tienda demo en `http://localhost:8790`           | Worker opcional o proyecto Vercel de demostración                                 |
 
 Para producción se necesita una cuenta Cloudflare con los recursos configurados en `apps/api/wrangler.jsonc` y
 `apps/dispatcher/wrangler.jsonc`, una conexión de base de datos de Neon y los secretos de despliegue. No reutilices el
 `.env` local ni `nh_dev_local_key`. `DATABASE_URL` se usa desde un entorno seguro para ejecutar migraciones; el Worker
 accede a la base mediante el binding Hyperdrive.
 
-El orden conceptual del despliegue es: **migrar Neon → desplegar API → desplegar consumidor → compilar/desplegar
-consola → verificar**. Los comandos, permisos y comprobaciones están en [Despliegue](despliegue.md). No ejecutes un
+El orden conceptual del despliegue es: **migrar Neon → desplegar API → desplegar consumidores → desplegar
+microfrontends → desplegar shell → verificar**. Los comandos, permisos y comprobaciones están en [Despliegue](despliegue.md). No ejecutes un
 despliegue remoto como parte de una prueba local.
 
 ## 6. Comandos de desarrollo

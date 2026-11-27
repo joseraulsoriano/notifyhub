@@ -2,6 +2,8 @@
 
 ## Empieza aquí
 
+- [Arquitectura actual](arquitectura-actual.md): clasificación de la arquitectura, servicios desplegables, paquetes
+  compartidos y flujo completo de eventos.
 - [Guía del proyecto](guia-del-proyecto.md): configuración local desde cero, recorrido de una solicitud, arquitectura,
   concurrencia y paso a producción.
 - [Contrato HTTP](api/openapi.yaml): rutas, cuerpos de solicitud y respuestas de la API.

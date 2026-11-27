@@ -1,5 +1,5 @@
 flowchart TD
-  A([Inicio: POST /v1/notifications]) --> B{¿Trae X-API-Key válida?}
+  A([Inicio: el ERP o la tienda emite un evento<br/>POST /v1/notifications]) --> B{¿Trae X-API-Key válida?}
   B -- No --> B1[/401 Unauthorized/] --> Z([Fin])
   B -- Sí --> C{¿Dentro del límite de<br/>solicitudes por minuto?}
   C -- No --> C1[/429 Too Many Requests/] --> Z
@@ -12,7 +12,5 @@ flowchart TD
   F -- Sí --> G{"¿Mismo contenido<br/>(hash de la solicitud)?"}
   G -- No --> G1[/409 Conflict/] --> Z
   G -- Sí --> G2[/202 con la notificación previa<br/>marcada como replay/] --> Z
-  H[Persistir en PostgreSQL<br/>estado RECEIVED] --> I[Encolar en Queues<br/>según prioridad alta / media / baja]
-  I --> J{¿Encolado exitoso?}
-  J -- Sí --> K[Transición RECEIVED → QUEUED] --> L[/202 Accepted con id y estado/] --> Z
-  J -- No --> M[Queda en RECEIVED;<br/>el barrido del despachador la recupera] --> L
+  H[Registrar la notificación<br/>estado RECEIVED, pendiente de envío] --> L[/202 Accepted con id y estado/]
+  L --> K[Iniciar la entrega<br/>ver flujo de despacho] --> Z

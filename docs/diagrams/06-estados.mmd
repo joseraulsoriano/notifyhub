@@ -1,7 +1,6 @@
 stateDiagram-v2
-  [*] --> RECEIVED: solicitud válida
-  RECEIVED --> QUEUED: encolada por prioridad
-  QUEUED --> SENDING: worker toma el trabajo
+  [*] --> RECEIVED: solicitud válida del ERP o la tienda
+  RECEIVED --> SENDING: inicia el envío
   SENDING --> SENT: proveedor acepta
   SENDING --> RETRYING: error transitorio
   RETRYING --> SENDING: tras backoff

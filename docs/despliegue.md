@@ -8,22 +8,32 @@ el entorno local y explica cómo validar el flujo antes de desplegar.
 
 ## Qué está conectado
 
-| Pieza           | Dónde                                                                      | Estado                |
-| --------------- | -------------------------------------------------------------------------- | --------------------- |
-| Código y CI     | GitHub `joseraulsoriano/notifyhub` (público)                               | ✅                    |
-| Worker          | tu cuenta de Cloudflare (plan gratuito), Worker `notifyhub-api`            | ✅ desplegado         |
-| Colas           | Queues `notifications-high`, `-medium`, `-low`                             | ✅ creadas            |
-| Pool a Postgres | Hyperdrive `notifyhub` (su id va en `wrangler.jsonc`; usa el de tu cuenta) | ✅ creado             |
-| Rate limit      | Durable Object `RateLimiterObject` (SQLite), se crea con el deploy         | ✅ desplegado         |
-| Postgres        | Neon, proyecto `notifyhub`, `aws-us-east-1`, PG 18                         | ✅ migrado y sembrado |
-| Despachador     | Worker `notifyhub-dispatcher`, consume las tres colas                      | ✅ desplegado         |
-| Consola         | Worker `notifyhub-console` (activos estáticos)                             | ✅ desplegada         |
-| Tablero         | Jira `arquitectura-so`, proyecto SCRUM                                     | ✅ al día             |
+| Pieza              | Dónde                                                                      | Estado                                |
+| ------------------ | -------------------------------------------------------------------------- | ------------------------------------- |
+| Código y CI        | GitHub `joseraulsoriano/notifyhub` (público)                               | ✅                                    |
+| Worker             | tu cuenta de Cloudflare (plan gratuito), Worker `notifyhub-api`            | ✅ desplegado                         |
+| Colas              | Queues `notifications-high`, `-medium`, `-low`                             | ✅ creadas                            |
+| Pool a Postgres    | Hyperdrive `notifyhub` (su id va en `wrangler.jsonc`; usa el de tu cuenta) | ✅ creado                             |
+| Rate limit         | Durable Object `RateLimiterObject` (SQLite), se crea con el deploy         | ✅ desplegado                         |
+| Postgres           | Neon, proyecto `notifyhub`, `aws-us-east-1`, PG 18                         | ✅ migrado y sembrado                 |
+| Despachador        | Worker `notifyhub-dispatcher`, consume las tres colas                      | ✅ desplegado                         |
+| Event relay        | Worker `notifyhub-event-relay`, Cron y queue de webhooks                   | configurado; despliegue por verificar |
+| Webhook inbox      | Worker público `notify`, verifica firmas y muestra eventos en Logs         | configurado; despliegue por verificar |
+| Shell consola      | Worker `notifyhub-console` (navegación y composición)                      | configurado; despliegue por verificar |
+| MFE dashboard      | Worker `notifyhub-mfe-dashboard`                                           | configurado; despliegue por verificar |
+| MFE notificaciones | Worker `notifyhub-mfe-notifications`                                       | configurado; despliegue por verificar |
+| MFE operaciones    | Worker `notifyhub-mfe-operations`                                          | configurado; despliegue por verificar |
+| MFE integraciones  | Worker `notifyhub-mfe-integrations`                                        | configurado; despliegue por verificar |
+| Tienda demo        | Worker `notifyhub-demo-store` o Vercel `notifyhub-demo-store`              | opcional                              |
+| Tablero            | Jira `arquitectura-so`, proyecto SCRUM                                     | ✅ al día                             |
 
 Límites del plan gratuito que importan: 100,000 peticiones/día al Worker, 10,000 operaciones/día de Queues (unas
 3,300 notificaciones) y 100,000 consultas/día por Hyperdrive.
 
-Última verificación (12 oct 2026): API, despachador y consola desplegados en ese orden; una notificación creada en producción pasó de QUEUED a DELIVERED por el despachador, y la consola responde con CORS correcto.
+Última verificación registrada (12 oct 2026): API, despachador y consola desplegados en ese orden; una notificación
+creada en producción pasó de `QUEUED` a `DELIVERED` por el despachador y la consola respondió con CORS correcto.
+El código de `event-relay` y `webhook-inbox` ya está en el repositorio y en el workflow, pero su despliegue posterior
+debe verificarse en la cuenta de Cloudflare.
 
 ## Desplegar
 
@@ -46,17 +56,51 @@ pnpm --filter @notifyhub/dispatcher run deploy
 
 Una cola solo admite un consumidor: si ya hay otro Worker consumiendo `notifications-*`, el despliegue falla.
 
-## Consola web
+## Webhooks de eventos
 
-La consola (`apps/console`) es un sitio estático que se sirve como Worker con activos (plan gratuito), en `https://notifyhub-console.<subdominio>.workers.dev`. No lleva ninguna API key: quien la usa pega la URL y su llave en el diálogo «Conectar» y la llave solo vive en esa pestaña. Sin conexión funciona en modo demo en memoria, inicialmente vacío.
+El Worker `notifyhub-event-relay` publica el outbox cada minuto y consume la cola `webhook-deliveries`. El workflow
+de despliegue crea esa cola si aún no existe y despliega la bandeja pública `notify` junto al relay después de la
+API. La URL del receptor es `https://notify.<subdominio>.workers.dev/notify`; valida la firma con la suscripción
+activa y registra solo metadatos del evento en Cloudflare Logs. La cola de mensajes fallidos se crea desde la
+configuración del consumidor.
+
+```bash
+pnpm --filter @notifyhub/event-relay exec wrangler queues create webhook-deliveries # solo si aún no existe
+pnpm --filter @notifyhub/webhook-inbox run deploy
+pnpm --filter @notifyhub/event-relay run deploy
+```
+
+## Shell y microfrontends
+
+La consola (`apps/console`) es un shell estático que se sirve como Worker con activos, en
+`https://notifyhub-console.<subdominio>.workers.dev`. Sus rutas montan cuatro microfrontends independientes:
+
+| Dominio        | Worker                        | Ruta local              |
+| -------------- | ----------------------------- | ----------------------- |
+| Dashboard      | `notifyhub-mfe-dashboard`     | `http://localhost:4331` |
+| Notificaciones | `notifyhub-mfe-notifications` | `http://localhost:4332` |
+| Operaciones    | `notifyhub-mfe-operations`    | `http://localhost:4333` |
+| Integraciones  | `notifyhub-mfe-integrations`  | `http://localhost:4334` |
+
+El shell entrega la conexión al iframe mediante `postMessage`; la API key nunca aparece en la URL. Cada MFE también
+puede abrirse de forma independiente y tiene su propio diálogo de conexión. En producción, la API debe permitir los
+cinco orígenes frontend en `CORS_ALLOWED_ORIGINS`.
 
 ```bash
 # la URL sugerida en el diálogo «Conectar» se fija al compilar
 PUBLIC_NOTIFYHUB_API_URL=https://notifyhub-api.<subdominio>.workers.dev \
   pnpm --filter @notifyhub/console run deploy
+
+pnpm --filter @notifyhub/mfe-dashboard run deploy
+pnpm --filter @notifyhub/mfe-notifications run deploy
+pnpm --filter @notifyhub/mfe-operations run deploy
+pnpm --filter @notifyhub/mfe-integrations run deploy
 ```
 
-Para que la consola pueda llamar a la API desde el navegador, su origen debe estar en `CORS_ALLOWED_ORIGINS` (variable en `apps/api/wrangler.jsonc`, ya incluye la consola y `localhost:4321`). Para que la salud de los proveedores se pueda editar desde la consola, agrega el nombre o id del cliente a `PROVIDER_ADMIN_CLIENTS` (en el panel de Cloudflare o con `--var`); vacío significa que nadie puede.
+Para que la consola y sus microfrontends puedan llamar a la API desde el navegador, sus orígenes deben estar en
+`CORS_ALLOWED_ORIGINS` (variable en `apps/api/wrangler.jsonc`, ya incluye los orígenes locales y los Workers públicos
+del shell/MFEs). Para que la salud de los proveedores se pueda editar, agrega el nombre o id del cliente a
+`PROVIDER_ADMIN_CLIENTS` (en el panel de Cloudflare o con `--var`); vacío significa que nadie puede.
 
 ### Orden de despliegue de esta versión
 
@@ -69,6 +113,12 @@ pnpm --filter @notifyhub/persistence db:deploy
 pnpm turbo run build
 pnpm --filter @notifyhub/api run deploy          # nuevos endpoints: listado, proveedores y bitácora
 pnpm --filter @notifyhub/dispatcher run deploy   # consume las colas y entrega con proveedores simulados
+pnpm --filter @notifyhub/webhook-inbox run deploy # endpoint público de prueba: /notify
+pnpm --filter @notifyhub/event-relay run deploy  # entrega eventos firmados a los suscriptores
+pnpm --filter @notifyhub/mfe-dashboard run deploy
+pnpm --filter @notifyhub/mfe-notifications run deploy
+pnpm --filter @notifyhub/mfe-operations run deploy
+pnpm --filter @notifyhub/mfe-integrations run deploy
 pnpm --filter @notifyhub/console run deploy
 ```
 
@@ -115,5 +165,5 @@ ambos. En local, Hyperdrive usa PostgreSQL de Docker Compose y Queues/Durable Ob
 `wrangler dev --remote` para una prueba que deba permanecer aislada: ese modo puede acceder a recursos reales.
 
 El despliegue actualiza recursos de la cuenta configurada en Wrangler. Antes de continuar, verifica el account, los
-IDs de Hyperdrive/Queues y el Worker destino; aplica migraciones a la base prevista y despliega API, consumidor y
-consola en el orden indicado arriba. `tests/e2e/smoke.sh` ejecuta la verificación aislada que usa CI.
+IDs de Hyperdrive/Queues y el Worker destino; aplica migraciones a la base prevista y despliega API, consumidores,
+microfrontends y shell en el orden indicado arriba. `tests/e2e/smoke.sh` ejecuta la verificación aislada que usa CI.

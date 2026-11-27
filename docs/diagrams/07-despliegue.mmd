@@ -4,18 +4,36 @@ flowchart LR
   cli["Clientes<br/>X-API-Key"] -- "HTTPS" --> api
   ops["Operación<br/>navegador"] -- "HTTPS" --> con
   subgraph cf["Cloudflare · plan gratuito"]
-    con["Worker notifyhub-console<br/>activos estáticos"]
+    con["Worker notifyhub-console<br/>shell + activos estáticos"]
+    mfed["Worker notifyhub-mfe-dashboard"]
+    mfen["Worker notifyhub-mfe-notifications"]
+    mfeo["Worker notifyhub-mfe-operations"]
+    mfei["Worker notifyhub-mfe-integrations"]
     api["Worker notifyhub-api<br/>Hono · RF1"]
     rl["Durable Object<br/>RateLimiterObject"]
     q[("Queues<br/>high / medium / low")]
     hd["Hyperdrive<br/>pool de conexiones"]
     disp["Worker notifyhub-dispatcher<br/>consumidor · RF2 · RF3"]
-    con -- "fetch + CORS" --> api
+    relay["Worker notifyhub-event-relay<br/>Cron 1 min + consumidor · RF5"]
+    wq[("Queue<br/>webhook-deliveries")]
+    inbox["Worker notify<br/>receptor de prueba"]
+    con -- "iframe + postMessage" --> mfed
+    con -- "iframe + postMessage" --> mfen
+    con -- "iframe + postMessage" --> mfeo
+    con -- "iframe + postMessage" --> mfei
+    mfed -- "fetch + CORS" --> api
+    mfen -- "fetch + CORS" --> api
+    mfeo -- "fetch + CORS" --> api
+    mfei -- "fetch + CORS" --> api
     api --> rl
     api --> q
     api --> hd
     q --> disp
     disp --> hd
+    relay -- "lee outbox" --> hd
+    relay -- "publica / consume" --> wq
+    relay -- "POST firmado" --> inbox
   end
+  relay -- "POST firmado (HMAC)" --> subs["Sistemas suscriptores"]
   hd -- "TLS" --> pg[("Neon Postgres<br/>aws-us-east-1")]
   cf -. "OTLP (planeado · ADR-005)" .-> gc["Grafana Cloud<br/>métricas, logs, trazas"]

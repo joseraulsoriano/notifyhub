@@ -11,3 +11,9 @@ packages/persistence/generated
 .wrangler
 .dev.vars*
 .gstack/
+.pnpm-store/
+.vercel
+apps/demo-store/vercel/api/
+
+# Los PDF se generan en local y no se suben (p. ej. docs/informe con latexmk)
+*.pdf
