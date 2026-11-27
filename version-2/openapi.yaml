@@ -1,0 +1,237 @@
+openapi: 3.1.0
+info:
+  title: TaskFlow v2 API
+  version: 1.0.0
+  description: Gateway REST API for collaborative projects, tasks, sessions, and notifications.
+servers:
+  - url: http://localhost:8080
+security:
+  - bearerAuth: []
+paths:
+  /api/auth/register:
+    post:
+      security: []
+      summary: Register a member account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 10 }
+      responses:
+        "201": { description: Member created }
+        "409": { description: Email already registered }
+  /api/auth/login:
+    post:
+      security: []
+      summary: Sign in and create a Redis-backed session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        "200": { description: JWT and user profile }
+        "401": { description: Invalid credentials }
+  /api/auth/logout:
+    post:
+      summary: Revoke the current JWT and remove the active session
+      responses:
+        "200": { description: Session revoked }
+  /api/auth/me:
+    get:
+      summary: Get the authenticated user
+      responses:
+        "200": { description: User profile }
+  /api/auth/users/{id}/role:
+    patch:
+      summary: Change a user's role (admin only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role: { type: string, enum: [admin, leader, member] }
+      responses:
+        "200": { description: Role updated }
+        "403": { description: Admin role required }
+  /api/projects:
+    get:
+      summary: List projects visible to the authenticated user
+      responses:
+        "200": { description: Project list }
+    post:
+      summary: Create a project and optionally add initial members
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                description: { type: string }
+                members:
+                  type: array
+                  items: { type: string, format: uuid }
+      responses:
+        "201": { description: Project created; creator becomes leader }
+  /api/projects/{projectId}/members:
+    post:
+      summary: Add a project member (leader or admin only)
+      parameters:
+        - in: path
+          name: projectId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId: { type: string, format: uuid }
+      responses:
+        "201": { description: Member added }
+        "403": { description: Project leader or admin required }
+  /api/projects/{projectId}/tasks:
+    get:
+      summary: List project tasks using Redis cache-aside
+      parameters:
+        - in: path
+          name: projectId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Tasks; source is cache or database
+    post:
+      summary: Create a task in a project
+      parameters:
+        - in: path
+          name: projectId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string }
+                description: { type: string }
+                assigneeId: { type: [string, "null"], format: uuid }
+      responses:
+        "201": { description: Task created }
+        "403": { description: Only a project leader or admin can assign another user }
+  /api/tasks/{taskId}:
+    get:
+      summary: Get one task using its Redis cache entry
+      parameters:
+        - in: path
+          name: taskId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: Task; source is cache or database }
+  /api/tasks/{taskId}/assignee:
+    patch:
+      summary: Assign or unassign a task (leader/admin; member may self-assign)
+      parameters:
+        - in: path
+          name: taskId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [assigneeId]
+              properties:
+                assigneeId: { type: [string, "null"], format: uuid }
+      responses:
+        "200": { description: Assignment updated and task event published }
+        "403": { description: Assignment not permitted }
+  /api/tasks/{taskId}/status:
+    patch:
+      summary: Update task status as its assigned member
+      parameters:
+        - in: path
+          name: taskId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [pending, in_progress, completed] }
+      responses:
+        "200": { description: Status updated and event published }
+        "403": { description: Only the assigned member can update status }
+  /api/notifications:
+    get:
+      summary: List notifications for the authenticated user
+      responses:
+        "200": { description: User notification list }
+  /api/notifications/stream:
+    get:
+      summary: Subscribe to real-time notifications over server-sent events
+      responses:
+        "200": { description: text/event-stream }
+  /api/notifications/{notificationId}/read:
+    patch:
+      summary: Mark a notification as read
+      parameters:
+        - in: path
+          name: notificationId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: Notification marked read }
+  /api/presence/online/{userId}:
+    get:
+      summary: Check whether a user has an active session
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: Online state }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
