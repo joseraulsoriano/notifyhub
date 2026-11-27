@@ -3,8 +3,7 @@ import { Separator } from '@notifyhub/mfe-runtime/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@notifyhub/mfe-runtime/ui/sidebar';
 import { Toaster } from '@notifyhub/mfe-runtime/ui/sonner';
 import { AppSidebar } from './app-sidebar';
-import { ConnectionButton } from '@notifyhub/mfe-runtime';
-import { NotificationCenter } from './notification-center';
+import { ConnectionButton, NotificationCenter } from '@notifyhub/mfe-runtime';
 
 const CRUMB: Record<string, string> = {
   '/': 'Resumen',

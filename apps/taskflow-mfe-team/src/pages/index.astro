@@ -1,0 +1,9 @@
+---
+import '../styles/app.css';
+import TfDocument from '@taskflow/kit/TfDocument.astro';
+import { App } from '../App';
+---
+
+<TfDocument title="Equipo y sesión">
+  <App client:only="react" />
+</TfDocument>

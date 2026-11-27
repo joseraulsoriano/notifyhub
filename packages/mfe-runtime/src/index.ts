@@ -17,6 +17,8 @@ export {
   isEmbedded,
   isRpcMethod,
   navigateShell,
+  postToShell,
+  reportHeight,
   shellLink,
   shellOrigin,
   type RpcMethod,
@@ -42,6 +44,7 @@ export {
   type NotificationState,
   type NotificationStore,
 } from './lib/notification-store';
+export { NotificationCenter } from './components/notification-center';
 export { Page } from './components/page';
 export { LoadError, PageHeader } from './components/page-header';
 export { FilterSelect } from './components/filter-select';

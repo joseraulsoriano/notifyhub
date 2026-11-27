@@ -21,7 +21,8 @@
     "infra:up": "docker compose -f infra/compose.yaml up -d",
     "infra:down": "docker compose -f infra/compose.yaml down",
     "demo:local": "node scripts/demo-local.mjs",
-    "prepare": "husky"
+    "prepare": "husky",
+    "dev:taskflow": "turbo run dev --filter=@taskflow/console --filter='@taskflow/mfe-*'"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.8.0",

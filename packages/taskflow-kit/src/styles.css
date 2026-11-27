@@ -1,0 +1,54 @@
+/*
+ * Identidad visual de TaskFlow (versión 2). Deliberadamente distinta de NotifyHub (papel cálido y tinta):
+ * aquí, fondo frío, acento índigo, barra lateral oscura y esquinas más redondeadas. Reusa los componentes
+ * del kit compartido y solo redefine sus tokens.
+ */
+@import '@notifyhub/mfe-runtime/styles.css';
+@source './';
+
+@theme inline {
+  --font-sans: 'Satoshi', ui-sans-serif, system-ui, sans-serif;
+  --font-heading: 'Satoshi', ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  --background: #f4f5fb;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --primary: #4f46e5;
+  --primary-foreground: #ffffff;
+  --secondary: #eceefa;
+  --secondary-foreground: #1e1b4b;
+  --muted: #eceefa;
+  --muted-foreground: #55607a;
+  --accent: #e4e7fb;
+  --accent-foreground: #312e81;
+  --destructive: #dc2626;
+  --border: #dde1f0;
+  --input: #dde1f0;
+  --ring: #4f46e5;
+  --radius: 0.8rem;
+  --sidebar: #0f172a;
+  --sidebar-foreground: #b4bed6;
+  --sidebar-primary: #818cf8;
+  --sidebar-primary-foreground: #0f172a;
+  --sidebar-accent: #1e293b;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #1e293b;
+  --sidebar-ring: #818cf8;
+  --ink-3: #7b86a1;
+  --surface-2: #eceefa;
+  --transfer: #f59e0b;
+  --transfer-ink: #b45309;
+  --success: #059669;
+  --running: #4f46e5;
+}
+
+@layer base {
+  ::selection {
+    background: color-mix(in srgb, var(--primary) 25%, transparent);
+  }
+}

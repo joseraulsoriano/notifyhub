@@ -1,22 +1,9 @@
-import {
-  NOTIFY_EVENT,
-  createNotificationStore,
-  openBrowserChannel,
-  parseNotification,
-  showToast,
-  type AppNotification,
-  type NotificationStore,
-  type Severity,
-} from '@notifyhub/mfe-runtime';
-import { Badge } from '@notifyhub/mfe-runtime/ui/badge';
-import { Button } from '@notifyhub/mfe-runtime/ui/button';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@notifyhub/mfe-runtime/ui/sheet';
+import { NOTIFY_EVENT, parseNotification, type AppNotification, type Severity } from '../lib/notification-contract';
+import { createNotificationStore, openBrowserChannel, type NotificationStore } from '../lib/notification-store';
+import { showToast } from '../lib/notify';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '../ui/sheet';
 import { AlertTriangle, Bell, CheckCheck, CheckCircle2, Info, Trash2, X, XCircle } from 'lucide-react';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 

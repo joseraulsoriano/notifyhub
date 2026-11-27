@@ -1,0 +1,12 @@
+---
+import '@/styles/app.css';
+import TfDocument from '@taskflow/kit/TfDocument.astro';
+interface Props {
+  title: string;
+}
+const { title } = Astro.props;
+---
+
+<TfDocument title={title}>
+  <slot />
+</TfDocument>
