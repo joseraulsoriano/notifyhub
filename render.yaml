@@ -1,0 +1,117 @@
+# TaskFlow (versión 2) en Render: 5 servicios Docker (uno por Dockerfile) + Postgres + Redis (Key Value).
+# Solo el gateway se usa desde fuera; los demás se hablan por la red privada y exigen el INTERNAL_TOKEN.
+# Para bajar todo tras la entrega: borrar el Blueprint desde el panel, o `render services delete <id>` por servicio.
+# Plan: `free` para probar. Para el día de la entrega cambia los `plan: free` de los servicios web a `starter`
+# (los gratis se duermen a los 15 min y tardan ~50 s en despertar).
+
+databases:
+  - name: taskflow-db
+    plan: free
+    region: oregon
+    databaseName: tasks
+    user: tasks
+    ipAllowList: [] # solo red privada
+
+services:
+  - type: keyvalue
+    name: taskflow-redis
+    plan: free
+    region: oregon
+    maxmemoryPolicy: noeviction # sesiones, lista negra de tokens y caché: que nunca se desalojen en silencio
+    ipAllowList: [] # solo red privada
+
+  - type: web
+    name: taskflow-auth
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./version-2/services/auth/Dockerfile
+    dockerContext: ./version-2
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: taskflow-shared
+      - key: DATABASE_URL
+        fromDatabase: { name: taskflow-db, property: connectionString }
+      - key: REDIS_URL
+        fromService: { type: keyvalue, name: taskflow-redis, property: connectionString }
+      - key: BOOTSTRAP_ADMIN_EMAIL
+        sync: false # lo escribes tú en el panel
+      - key: BOOTSTRAP_ADMIN_PASSWORD
+        sync: false
+
+  - type: web
+    name: taskflow-tasks
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./version-2/services/tasks/Dockerfile
+    dockerContext: ./version-2
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: taskflow-shared
+      - key: DATABASE_URL
+        fromDatabase: { name: taskflow-db, property: connectionString }
+      - key: REDIS_URL
+        fromService: { type: keyvalue, name: taskflow-redis, property: connectionString }
+
+  - type: web
+    name: taskflow-notifications
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./version-2/services/notifications/Dockerfile
+    dockerContext: ./version-2
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: taskflow-shared
+      - key: DATABASE_URL
+        fromDatabase: { name: taskflow-db, property: connectionString }
+      - key: REDIS_URL
+        fromService: { type: keyvalue, name: taskflow-redis, property: connectionString }
+
+  - type: web
+    name: taskflow-presence
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./version-2/services/presence/Dockerfile
+    dockerContext: ./version-2
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: taskflow-shared
+      - key: REDIS_URL
+        fromService: { type: keyvalue, name: taskflow-redis, property: connectionString }
+
+  - type: web
+    name: taskflow-gateway
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./version-2/services/gateway/Dockerfile
+    dockerContext: ./version-2
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: taskflow-shared
+      - key: REDIS_URL
+        fromService: { type: keyvalue, name: taskflow-redis, property: connectionString }
+      - key: AUTH_URL
+        fromService: { type: web, name: taskflow-auth, property: hostport }
+      - key: TASK_URL
+        fromService: { type: web, name: taskflow-tasks, property: hostport }
+      - key: NOTIFICATION_URL
+        fromService: { type: web, name: taskflow-notifications, property: hostport }
+      - key: PRESENCE_URL
+        fromService: { type: web, name: taskflow-presence, property: hostport }
+      # Orígenes del frontend (Cloudflare) que pueden llamar al gateway desde el navegador.
+      - key: CORS_ORIGINS
+        value: https://taskflow-console.sc202357155.workers.dev,https://taskflow-mfe-projects.sc202357155.workers.dev,https://taskflow-mfe-team.sc202357155.workers.dev
+
+envVarGroups:
+  - name: taskflow-shared
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: INTERNAL_TOKEN
+        generateValue: true
+      - key: TOKEN_TTL_SECONDS
+        value: '900'

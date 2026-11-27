@@ -7,6 +7,13 @@ const { createRedisClient, connect } = require("../../shared/redis");
 const { internalHeaders, internalToken } = require("../../shared/internal-auth");
 const { cors, parseOrigins } = require("../../shared/cors");
 
+/** Render entrega `host:puerto` de la red privada; docker-compose entrega la URL completa. */
+const baseUrl = (value) => (/^https?:\/\//.test(value || "") ? value : `http://${value}`);
+const AUTH_URL = baseUrl(process.env.AUTH_URL);
+const TASK_URL = baseUrl(process.env.TASK_URL);
+const NOTIFICATION_URL = baseUrl(process.env.NOTIFICATION_URL);
+const PRESENCE_URL = baseUrl(process.env.PRESENCE_URL);
+
 const app = express();
 const redis = createRedisClient();
 const jwtSecret = required("JWT_SECRET");
@@ -65,7 +72,7 @@ function headersFor(req) {
 }
 
 async function callPresence(path, method, auth) {
-  const response = await fetch(`${process.env.PRESENCE_URL}${path}`, {
+  const response = await fetch(`${PRESENCE_URL}${path}`, {
     method,
     headers: {
       "content-type": "application/json",
@@ -131,11 +138,11 @@ function proxy(prefix, target, servicePath = "") {
   });
 }
 
-proxy("/api/auth", process.env.AUTH_URL);
-proxy("/api/projects", process.env.TASK_URL, "/projects");
-proxy("/api/tasks", process.env.TASK_URL, "/tasks");
-proxy("/api/notifications", process.env.NOTIFICATION_URL);
-proxy("/api/presence", process.env.PRESENCE_URL);
+proxy("/api/auth", AUTH_URL);
+proxy("/api/projects", TASK_URL, "/projects");
+proxy("/api/tasks", TASK_URL, "/tasks");
+proxy("/api/notifications", NOTIFICATION_URL);
+proxy("/api/presence", PRESENCE_URL);
 
 app.use((error, _req, res, _next) => {
   console.error("API gateway request failed", error);
