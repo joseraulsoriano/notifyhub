@@ -17,6 +17,7 @@ export default tseslint.config(
       'apps/demo-store/vercel/api/**',
       // Proyecto independiente (TaskFlow) con su propio tooling; no forma parte del monorepo.
       'version-2/**',
+      'docs/presentacion/**',
     ],
   },
   js.configs.recommended,

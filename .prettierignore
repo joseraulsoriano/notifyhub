@@ -13,3 +13,5 @@ version-2
 .astro
 .gstack
 .claude/settings.local.json
+apps/demo-store/worker-configuration.d.ts
+apps/demo-store/vercel/api
