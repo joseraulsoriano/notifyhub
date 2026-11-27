@@ -1,9 +1,12 @@
 // Notificaciones push al celular vía ntfy (https://ntfy.sh). Funciones puras y testeables.
 // Minimización de datos: a ntfy solo viaja el título de la tarea y su estado (nunca correos ni nombres).
 
+// Render no tiene salida IPv6: sin esto, la conexión a ntfy.sh se queda esperando una dirección AAAA y vence.
+require("node:dns").setDefaultResultOrder("ipv4first");
+
 const TOPIC_PATTERN = /^[A-Za-z0-9_-]{12,64}$/;
 const DEFAULT_SERVER = "https://ntfy.sh";
-const TIMEOUT_MS = 4000;
+const TIMEOUT_MS = 8000;
 
 const STATUS_LABEL = {
   pending: "Pendiente",
