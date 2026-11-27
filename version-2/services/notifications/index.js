@@ -82,7 +82,7 @@ app.post(
         tags: ["white_check_mark"],
       });
     } catch (error) {
-      console.error("ntfy test push failed:", error.name, error.message);
+      console.error("ntfy test push failed:", error.name, error.message, error.cause?.code ?? error.cause?.message ?? "");
       throw new HttpError(502, "push_failed");
     }
     res.json({ sent: true });
@@ -125,7 +125,7 @@ async function pushToPhone(userId, event) {
     if (!rows[0]) return;
     await sendPush({ server: ntfyServer(), topic: rows[0].topic, ...buildPush(event.eventType, event.task) });
   } catch (error) {
-    console.error("ntfy push failed:", error.name, error.message);
+    console.error("ntfy push failed:", error.name, error.message, error.cause?.code ?? error.cause?.message ?? "");
   }
 }
 
