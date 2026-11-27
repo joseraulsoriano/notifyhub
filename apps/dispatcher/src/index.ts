@@ -11,9 +11,36 @@ import {
   PgNotificationRepository,
   PgProviderRepository,
 } from '@notifyhub/persistence';
-import { createDefaultRegistry } from '@notifyhub/providers';
+import { createDefaultRegistry, createProductionRegistry } from '@notifyhub/providers';
 import type { DispatchJobData } from '@notifyhub/shared';
 import { Client } from 'pg';
+
+type DispatcherEnv = Env & {
+  SENDGRID_API_KEY?: string;
+  SENDGRID_FROM_EMAIL?: string;
+  SENDGRID_FROM_NAME?: string;
+  TWILIO_ACCOUNT_SID?: string;
+  TWILIO_AUTH_TOKEN?: string;
+  TWILIO_FROM_NUMBER?: string;
+  /** Solo para la demo local (`pnpm demo:local`): "true" usa el transporte simulado. Nunca se define en producción. */
+  SIMULATED_PROVIDERS?: string;
+};
+
+function registryFor(env: DispatcherEnv) {
+  if (env.SIMULATED_PROVIDERS === 'true') return createDefaultRegistry();
+  return createProductionRegistry({
+    sendgrid: {
+      apiKey: env.SENDGRID_API_KEY,
+      fromEmail: env.SENDGRID_FROM_EMAIL,
+      fromName: env.SENDGRID_FROM_NAME,
+    },
+    twilio: {
+      accountSid: env.TWILIO_ACCOUNT_SID,
+      authToken: env.TWILIO_AUTH_TOKEN,
+      fromNumber: env.TWILIO_FROM_NUMBER,
+    },
+  });
+}
 
 /** Observer de ejemplo: cada evento sale como una línea JSON en los logs de Workers. */
 const logSubscriber: EventSubscriber = {
@@ -30,7 +57,7 @@ function parseJob(body: unknown): DispatchJobData | null {
     : null;
 }
 
-async function processMessage(message: Message, queue: string, env: Env): Promise<void> {
+async function processMessage(message: Message, queue: string, env: DispatcherEnv): Promise<void> {
   const job = parseJob(message.body);
   if (!job) {
     console.error(JSON.stringify({ message: 'dispatch.invalid_message', queue, messageId: message.id }));
@@ -49,7 +76,7 @@ async function processMessage(message: Message, queue: string, env: Env): Promis
       notifications: new PgNotificationRepository(db),
       providers: new PgProviderRepository(db),
       capacity: new PgDispatchCapacityRepository(db),
-      registry: createDefaultRegistry(),
+      registry: registryFor(env),
       fallback: new FallbackPolicy(DEFAULT_ROUTING.fallback),
       strategyFor: (priority) =>
         strategyFor(DEFAULT_ROUTING.strategy[priority], DEFAULT_ROUTING.providerOrder),

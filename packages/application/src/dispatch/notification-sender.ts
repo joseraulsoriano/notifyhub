@@ -4,7 +4,7 @@ import type { Channel, NotificationRequest } from '@notifyhub/domain';
 export type DeliveryResult =
   | {
       ok: true;
-      providerMessageId: string;
+      providerMessageId?: string;
       latencyMs: number;
       /** El proveedor confirmó la entrega (SENT → DELIVERED). Los webhooks no confirman. */
       delivered: boolean;

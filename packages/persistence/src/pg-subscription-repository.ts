@@ -60,9 +60,16 @@ export class PgSubscriptionRepository implements SubscriptionRepository {
     active: boolean,
   ): Promise<NotificationSubscription | null> {
     const { rows } = await this.db.query<SubscriptionRow>(
-      `UPDATE subscription SET active = $3
-       WHERE client_app_id = $1 AND id = $2
-       RETURNING ${COLUMNS}`,
+      `WITH updated AS (
+         UPDATE subscription SET active = $3
+         WHERE client_app_id = $1 AND id = $2
+         RETURNING ${COLUMNS}
+       ), cancelled AS (
+         UPDATE subscription_delivery SET status = 'CANCELLED'
+         WHERE subscription_id IN (SELECT id FROM updated)
+           AND $3 = false AND status = 'PENDING'
+       )
+       SELECT ${COLUMNS} FROM updated`,
       [clientAppId, id, active],
     );
     return rows[0] ? toDomain(rows[0]) : null;

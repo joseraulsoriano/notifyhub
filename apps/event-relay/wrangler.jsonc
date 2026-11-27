@@ -1,0 +1,35 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "notifyhub-event-relay",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-02",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+    "logs": { "enabled": true, "head_sampling_rate": 1 },
+    "traces": { "enabled": true, "head_sampling_rate": 0.01 },
+  },
+  "workers_dev": false,
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "49c31e43fadf4d10952b31c0257d8c4a",
+      "localConnectionString": "******localhost:5432/notifyhub",
+    },
+  ],
+  "queues": {
+    "producers": [{ "binding": "WEBHOOK_DELIVERIES", "queue": "webhook-deliveries" }],
+    "consumers": [
+      {
+        "queue": "webhook-deliveries",
+        "max_batch_size": 10,
+        "max_batch_timeout": 1,
+        "max_retries": 20,
+        "dead_letter_queue": "webhook-deliveries-dead-letter",
+      },
+    ],
+  },
+  "triggers": {
+    "crons": ["* * * * *"],
+  },
+}

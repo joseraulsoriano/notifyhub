@@ -9,6 +9,7 @@ export interface ProviderResponse {
   body: Record<string, unknown>;
   latencyMs: number;
   messageId?: string;
+  errorCode?: string;
 }
 
 const STATUS_TEXT: Record<number, string> = {
@@ -128,7 +129,7 @@ export abstract class BaseSender implements NotificationSender {
     if (response.status >= 200 && response.status < 300) {
       return {
         ok: true,
-        providerMessageId: response.messageId ?? `${this.provider.code}-${response.latencyMs}`,
+        ...(response.messageId ? { providerMessageId: response.messageId } : {}),
         latencyMs: response.latencyMs,
         delivered: this.confirmsDelivery,
         response: sanitize(response.body),
@@ -137,7 +138,7 @@ export abstract class BaseSender implements NotificationSender {
     return {
       ok: false,
       retryable: response.status === 429 || response.status >= 500,
-      errorCode: `${response.status} ${STATUS_TEXT[response.status] ?? 'ERROR'}`,
+      errorCode: response.errorCode ?? `${response.status} ${STATUS_TEXT[response.status] ?? 'ERROR'}`,
       latencyMs: response.latencyMs,
       response: sanitize(response.body),
     };

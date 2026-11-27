@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type {
   CreateResult,
   ListCursor,
@@ -7,7 +8,12 @@ import type {
   NotificationRepository,
   RecordAttemptInput,
 } from '@notifyhub/application';
-import type { DeliveryAttempt, NotificationRequest, NotificationStatus } from '@notifyhub/domain';
+import type {
+  DeliveryAttempt,
+  NotificationEvent,
+  NotificationRequest,
+  NotificationStatus,
+} from '@notifyhub/domain';
 import { assertTransition } from '@notifyhub/domain';
 import type { ClientBase } from 'pg';
 
@@ -141,15 +147,24 @@ export class PgNotificationRepository implements NotificationRepository {
     assertTransition(from, to);
     await inTransaction(this.db, async () => {
       // El filtro por estado de origen evita carreras entre la API y los workers.
-      const { rowCount } = await this.db.query(
-        `UPDATE notification SET status = $3, updated_at = now() WHERE id = $1 AND status = $2`,
+      const { rows } = await this.db.query<{ updated_at: Date }>(
+        `UPDATE notification SET status = $3, updated_at = now() WHERE id = $1 AND status = $2
+         RETURNING updated_at`,
         [id, from, to],
       );
-      if (rowCount === 0) throw new Error(`La notificación ${id} no está en ${from}`);
+      const updated = rows[0];
+      if (!updated) throw new Error(`La notificación ${id} no está en ${from}`);
+      const occurredAt = updated.updated_at;
       await this.db.query(
         `INSERT INTO audit_log (notification_id, event_type, from_status, to_status, detail)
          VALUES ($1, 'notification.status_changed', $2, $3, $4::jsonb)`,
         [id, from, to, detail ? JSON.stringify(detail) : null],
+      );
+      await this.insertOutboxEvent(
+        id,
+        'notification.status_changed',
+        { from, to, ...(detail ? { detail } : {}) },
+        occurredAt,
       );
     });
   }
@@ -361,6 +376,20 @@ export class PgNotificationRepository implements NotificationRepository {
           }),
         ],
       );
+      await this.insertOutboxEvent(
+        input.notificationId,
+        'notification.attempted',
+        {
+          providerCode: input.providerCode,
+          channel: input.channel,
+          attemptNumber: input.attemptNumber,
+          isFallback: input.isFallback,
+          status: input.status,
+          errorCode: input.errorCode,
+          latencyMs: input.latencyMs,
+        },
+        row.attempted_at,
+      );
       return {
         id: row.id,
         notificationId: input.notificationId,
@@ -375,5 +404,25 @@ export class PgNotificationRepository implements NotificationRepository {
         attemptedAt: row.attempted_at,
       };
     });
+  }
+
+  private async insertOutboxEvent(
+    notificationId: string,
+    eventType: NotificationEvent['type'],
+    event: Record<string, unknown>,
+    occurredAt: Date,
+  ): Promise<void> {
+    const id = randomUUID();
+    await this.db.query(
+      `INSERT INTO outbox_event (id, notification_id, event_type, payload, created_at)
+       VALUES ($1, $2, $3, $4::jsonb, $5)`,
+      [
+        id,
+        notificationId,
+        eventType,
+        JSON.stringify({ id, type: eventType, notificationId, ...event, occurredAt }),
+        occurredAt,
+      ],
+    );
   }
 }

@@ -229,7 +229,7 @@ export class DispatchService {
         attemptNumber: attempts,
         isFallback,
         status: attemptStatus,
-        providerMessageId: result.ok ? result.providerMessageId : null,
+        providerMessageId: result.ok ? (result.providerMessageId ?? null) : null,
         errorCode: result.ok ? null : result.errorCode,
         latencyMs: result.latencyMs,
         response: result.response ?? null,
