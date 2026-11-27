@@ -17,8 +17,16 @@ const STATUS_LABEL = {
   completed: "Completada",
 };
 
+// Servidor al que se suscribe la app del celular (se muestra en la interfaz).
 function ntfyServer() {
   return (process.env.NTFY_SERVER || DEFAULT_SERVER).replace(/\/+$/, "");
+}
+
+// A dónde publica este servicio. Render no logra conectarse a ntfy.sh (la conexión se cuelga), así que se pasa por un
+// relevo en Cloudflare que reenvía a ntfy.sh. Con NTFY_PUBLISH_URL se puede apuntar a otro (o directo a ntfy.sh).
+const DEFAULT_RELAY = "https://taskflow-push-relay.sc202357155.workers.dev";
+function ntfyPublishUrl() {
+  return (process.env.NTFY_PUBLISH_URL || DEFAULT_RELAY).replace(/\/+$/, "");
 }
 
 function isValidTopic(topic) {
@@ -35,7 +43,7 @@ function buildPush(eventType, task) {
 }
 
 // Usa el endpoint JSON de ntfy (POST a la raíz) para que los acentos no dependan de cabeceras HTTP.
-async function sendPush({ server = ntfyServer(), topic, title, message, tags, click }, fetchImpl = fetch) {
+async function sendPush({ server = ntfyPublishUrl(), topic, title, message, tags, click }, fetchImpl = fetch) {
   if (!isValidTopic(topic)) throw new Error("invalid_topic");
   const response = await fetchImpl(`${server.replace(/\/+$/, "")}/`, {
     method: "POST",
@@ -46,4 +54,4 @@ async function sendPush({ server = ntfyServer(), topic, title, message, tags, cl
   if (!response.ok) throw new Error(`ntfy_http_${response.status}`);
 }
 
-module.exports = { buildPush, isValidTopic, ntfyServer, sendPush, DEFAULT_SERVER };
+module.exports = { buildPush, isValidTopic, ntfyServer, ntfyPublishUrl, sendPush, DEFAULT_SERVER };

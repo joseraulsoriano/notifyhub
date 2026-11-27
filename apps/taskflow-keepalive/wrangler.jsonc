@@ -1,0 +1,10 @@
+// Los servicios web gratuitos de Render se duermen a los 15 min sin tráfico y tardan ~20 s en despertar.
+// Este Worker los consulta cada 10 min. Bórralo al terminar la entrega: `wrangler delete --name taskflow-keepalive`.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "taskflow-keepalive",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-25",
+  "triggers": { "crons": ["*/10 * * * *"] },
+  "observability": { "enabled": true },
+}

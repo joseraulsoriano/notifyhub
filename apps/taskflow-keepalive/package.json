@@ -1,0 +1,15 @@
+{
+  "name": "@taskflow/keepalive",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Mantiene despiertos los servicios gratuitos de Render durante la entrega (cron cada 10 min).",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "typescript": "5.8.3",
+    "wrangler": "4.149.0"
+  }
+}

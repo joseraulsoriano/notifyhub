@@ -1,0 +1,9 @@
+// Relevo de notificaciones push: el notification-service (Render) le entrega el aviso y este Worker lo reenvía
+// a ntfy.sh. Bórralo al terminar la entrega: `wrangler delete --name taskflow-push-relay`.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "taskflow-push-relay",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-25",
+  "observability": { "enabled": true },
+}

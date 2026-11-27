@@ -75,7 +75,6 @@ app.post(
     if (!rows[0]) throw new HttpError(404, "push_not_configured");
     try {
       await sendPush({
-        server: ntfyServer(),
         topic: rows[0].topic,
         title: "Prueba de TaskFlow",
         message: "Las notificaciones en tu celular funcionan.",
@@ -123,7 +122,7 @@ async function pushToPhone(userId, event) {
   try {
     const { rows } = await pool.query("SELECT topic FROM notifications.push_targets WHERE user_id = $1", [userId]);
     if (!rows[0]) return;
-    await sendPush({ server: ntfyServer(), topic: rows[0].topic, ...buildPush(event.eventType, event.task) });
+    await sendPush({ topic: rows[0].topic, ...buildPush(event.eventType, event.task) });
   } catch (error) {
     console.error("ntfy push failed:", error.name, error.message, error.cause?.code ?? error.cause?.message ?? "");
   }

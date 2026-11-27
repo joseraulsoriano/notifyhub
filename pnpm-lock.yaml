@@ -451,6 +451,15 @@ importers:
         specifier: 4.149.0
         version: 4.149.0(@types/node@22.20.5)
 
+  apps/taskflow-keepalive:
+    devDependencies:
+      typescript:
+        specifier: 5.8.3
+        version: 5.8.3
+      wrangler:
+        specifier: 4.149.0
+        version: 4.149.0(@types/node@22.20.5)
+
   apps/taskflow-mfe-projects:
     dependencies:
       '@astrojs/react':
@@ -539,6 +548,18 @@ importers:
       typescript:
         specifier: 5.8.3
         version: 5.8.3
+      wrangler:
+        specifier: 4.149.0
+        version: 4.149.0(@types/node@22.20.5)
+
+  apps/taskflow-push-relay:
+    devDependencies:
+      typescript:
+        specifier: 5.8.3
+        version: 5.8.3
+      vitest:
+        specifier: ^3.1.0
+        version: 3.2.7(@types/node@22.20.5)(jiti@2.7.0)(jsdom@26.1.0)(lightningcss@1.33.0)(yaml@2.9.1)
       wrangler:
         specifier: 4.149.0
         version: 4.149.0(@types/node@22.20.5)
