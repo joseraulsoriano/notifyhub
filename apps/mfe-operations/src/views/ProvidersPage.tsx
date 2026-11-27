@@ -152,47 +152,62 @@ function ProvidersView() {
           )}
         </CardContent>
       </Card>
-      <div className="grid gap-4 md:grid-cols-2">
+      <Card className="gap-0 overflow-hidden p-0">
+        <div className="hidden grid-cols-[1.3fr_1fr_1.1fr_0.7fr_0.9fr_auto] items-center gap-4 border-b bg-secondary px-5 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground md:grid">
+          <span>Proveedor</span>
+          <span>Estado</span>
+          <span>Confiabilidad</span>
+          <span>Costo / msg</span>
+          <span>Salud simulada</span>
+          <span className="w-10 text-right">Activo</span>
+        </div>
         {(data ?? []).map((p) => (
-          <Card key={p.code}>
-            <CardHeader>
-              <CardTitle className="font-mono">{p.code}</CardTitle>
-              <CardDescription>
-                <ChannelTag channel={p.channel} className="text-xs" />
-              </CardDescription>
-              <div className="col-start-2 row-span-2 row-start-1 flex items-center gap-3 self-start justify-self-end">
-                <StatusBadge status={p.health} />
-                <Switch
-                  checked={p.enabled}
-                  onCheckedChange={(v) => void update(p.code, { enabled: v })}
-                  aria-label={`Habilitar ${p.code}`}
-                />
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-3 gap-3 text-sm">
-                <div>
-                  <p className="text-xs text-muted-foreground">Costo / msg</p>
-                  <b className="font-mono">${p.costPerMessage.toFixed(4)}</b>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Confiabilidad</p>
-                  <b>{p.reliabilityScore}%</b>
-                </div>
-                <div>
-                  <p className="mb-1 text-xs text-muted-foreground">Salud</p>
-                  <FilterSelect
-                    className="h-7 w-full text-xs"
-                    value={p.health}
-                    onChange={(v) => void update(p.code, { health: v as ProviderHealth })}
-                    options={HEALTHS}
+          <div
+            key={p.code}
+            className="grid grid-cols-2 items-center gap-x-4 gap-y-3 border-b px-5 py-4 last:border-b-0 md:grid-cols-[1.3fr_1fr_1.1fr_0.7fr_0.9fr_auto]"
+          >
+            <div>
+              <p className="font-mono text-sm font-semibold">{p.code}</p>
+              <ChannelTag channel={p.channel} className="mt-1 text-xs" />
+            </div>
+            <div>
+              <StatusBadge status={p.health} label={p.enabled ? undefined : 'Deshabilitado'} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <div
+                  className="h-1.5 w-full max-w-24 overflow-hidden rounded-full bg-secondary"
+                  role="progressbar"
+                  aria-label={`Confiabilidad de ${p.code}`}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={p.reliabilityScore}
+                >
+                  <div
+                    className={`h-full rounded-full ${p.reliabilityScore >= 95 ? 'bg-success' : p.reliabilityScore >= 80 ? 'bg-line-push' : 'bg-destructive'}`}
+                    style={{ width: `${p.reliabilityScore}%` }}
                   />
                 </div>
+                <span className="font-mono text-xs tabular-nums">{p.reliabilityScore}%</span>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+            <p className="font-mono text-sm">${p.costPerMessage.toFixed(4)}</p>
+            <FilterSelect
+              className="h-8 w-full text-xs"
+              value={p.health}
+              onChange={(v) => void update(p.code, { health: v as ProviderHealth })}
+              options={HEALTHS}
+            />
+            <div className="flex justify-end md:w-10">
+              <Switch
+                checked={p.enabled}
+                onCheckedChange={(v) => void update(p.code, { enabled: v })}
+                aria-label={`Habilitar ${p.code}`}
+              />
+            </div>
+          </div>
         ))}
-      </div>
+      </Card>
       <Card className="mt-4">
         <CardHeader>
           <CardTitle>Reglas de ruteo</CardTitle>

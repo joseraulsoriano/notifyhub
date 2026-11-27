@@ -31,6 +31,33 @@ const LABEL: Record<Channel, string> = {
 const PRESSED = 'data-[pressed]:border-foreground data-[pressed]:bg-secondary data-[pressed]:text-foreground';
 const QUEUE: Record<Priority, string> = { HIGH: 'alta', MEDIUM: 'media', LOW: 'baja' };
 
+function Section({
+  n,
+  title,
+  hint,
+  children,
+}: {
+  n: number;
+  title: string;
+  hint: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-4">
+      <header className="flex items-start gap-2.5">
+        <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-secondary font-mono text-[11px] font-semibold">
+          {n}
+        </span>
+        <div>
+          <h2 className="text-sm font-semibold leading-5">{title}</h2>
+          <p className="text-xs text-muted-foreground">{hint}</p>
+        </div>
+      </header>
+      {children}
+    </section>
+  );
+}
+
 export function NewNotification() {
   return (
     <Page>
@@ -101,77 +128,91 @@ function NewView() {
         title="Nueva solicitud"
         description="POST /v1/notifications · valida, persiste y encola por prioridad"
       />
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
         <Card>
-          <CardContent className="space-y-5">
-            <div className="space-y-2">
-              <Label>Canal preferido</Label>
-              <ToggleGroup
-                value={[channel]}
-                onValueChange={(v) => v[0] && setChannel(v[0] as Channel)}
-                variant="outline"
-                className="flex-wrap"
-              >
-                {CHANNELS.map((c) => (
-                  <ToggleGroupItem key={c} value={c} className={`gap-1.5 px-3 ${PRESSED}`}>
-                    <i className={`inline-block h-1 w-4 rounded-full ${CHANNEL_BG[c]}`} />
-                    {CHANNEL_LABEL[c]}
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
-            </div>
-            <div className="space-y-2">
-              <Label>Prioridad</Label>
-              <ToggleGroup
-                value={[priority]}
-                onValueChange={(v) => v[0] && setPriority(v[0] as Priority)}
-                variant="outline"
-              >
-                {(Object.keys(PRIORITY_LABEL) as Priority[]).map((p) => (
-                  <ToggleGroupItem key={p} value={p} className={`px-4 ${PRESSED}`}>
-                    {PRIORITY_LABEL[p]}
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="to">{LABEL[channel]}</Label>
-              <Input
-                id="to"
-                value={contact[field]}
-                onChange={(e) => setContact({ ...contact, [field]: e.target.value })}
-              />
-            </div>
-            <fieldset className="space-y-3 rounded-lg border p-3">
-              <legend className="px-1 text-xs font-medium text-muted-foreground">
-                Contactos de respaldo (para el fallback)
-              </legend>
-              {CHANNELS.filter((c) => c !== channel).map((c) => (
-                <div key={c} className="grid grid-cols-[130px_1fr] items-center gap-3">
-                  <Label htmlFor={`c-${c}`} className="text-xs">
-                    {CHANNEL_LABEL[c]}
-                  </Label>
-                  <Input
-                    id={`c-${c}`}
-                    className="h-8 font-mono text-xs"
-                    value={contact[CONTACT_FIELD[c]]}
-                    onChange={(e) => setContact({ ...contact, [CONTACT_FIELD[c]]: e.target.value })}
-                  />
+          <CardContent className="space-y-7">
+            <Section n={1} title="Cómo se envía" hint="Canal de salida y cola de prioridad">
+              <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
+                <div className="space-y-2">
+                  <Label>Canal preferido</Label>
+                  <ToggleGroup
+                    value={[channel]}
+                    onValueChange={(v) => v[0] && setChannel(v[0] as Channel)}
+                    variant="outline"
+                    className="flex-wrap"
+                  >
+                    {CHANNELS.map((c) => (
+                      <ToggleGroupItem key={c} value={c} className={`gap-1.5 px-3 ${PRESSED}`}>
+                        <i className={`inline-block h-1 w-4 rounded-full ${CHANNEL_BG[c]}`} />
+                        {CHANNEL_LABEL[c]}
+                      </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
                 </div>
-              ))}
-            </fieldset>
-            <div className="space-y-2">
-              <Label htmlFor="subj">Asunto</Label>
-              <Input id="subj" value={subject} onChange={(e) => setSubject(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="body">Mensaje</Label>
-              <Textarea id="body" rows={4} value={body} onChange={(e) => setBody(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="key">Idempotency-Key</Label>
-              <Input id="key" className="font-mono" value={key} onChange={(e) => setKey(e.target.value)} />
-            </div>
+                <div className="space-y-2">
+                  <Label>Prioridad</Label>
+                  <ToggleGroup
+                    value={[priority]}
+                    onValueChange={(v) => v[0] && setPriority(v[0] as Priority)}
+                    variant="outline"
+                  >
+                    {(Object.keys(PRIORITY_LABEL) as Priority[]).map((p) => (
+                      <ToggleGroupItem key={p} value={p} className={`px-4 ${PRESSED}`}>
+                        {PRIORITY_LABEL[p]}
+                      </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
+                </div>
+              </div>
+            </Section>
+
+            <Section n={2} title="A quién" hint="Destinatario y contactos por si el canal falla">
+              <div className="space-y-2">
+                <Label htmlFor="to">{LABEL[channel]}</Label>
+                <Input
+                  id="to"
+                  value={contact[field]}
+                  onChange={(e) => setContact({ ...contact, [field]: e.target.value })}
+                />
+              </div>
+              <fieldset className="space-y-3 rounded-lg border bg-secondary/40 p-3">
+                <legend className="px-1 text-xs font-medium text-muted-foreground">
+                  Contactos de respaldo (para el fallback)
+                </legend>
+                {CHANNELS.filter((c) => c !== channel).map((c) => (
+                  <div key={c} className="grid grid-cols-[110px_1fr] items-center gap-3">
+                    <Label htmlFor={`c-${c}`} className="text-xs">
+                      {CHANNEL_LABEL[c]}
+                    </Label>
+                    <Input
+                      id={`c-${c}`}
+                      className="h-8 bg-card font-mono text-xs"
+                      value={contact[CONTACT_FIELD[c]]}
+                      onChange={(e) => setContact({ ...contact, [CONTACT_FIELD[c]]: e.target.value })}
+                    />
+                  </div>
+                ))}
+              </fieldset>
+            </Section>
+
+            <Section n={3} title="Qué se envía" hint="Contenido y llave de idempotencia">
+              <div className="space-y-2">
+                <Label htmlFor="subj">Asunto</Label>
+                <Input id="subj" value={subject} onChange={(e) => setSubject(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="body">Mensaje</Label>
+                <Textarea id="body" rows={4} value={body} onChange={(e) => setBody(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="key">Idempotency-Key</Label>
+                <Input id="key" className="font-mono" value={key} onChange={(e) => setKey(e.target.value)} />
+                <p className="text-xs text-muted-foreground">
+                  Reenviar con la misma llave no duplica la solicitud.
+                </p>
+              </div>
+            </Section>
+
             {problems.length > 0 && (
               <ul
                 role="alert"
@@ -182,7 +223,7 @@ function NewView() {
                 ))}
               </ul>
             )}
-            <div className="flex gap-2">
+            <div className="flex gap-2 border-t pt-5">
               <Button onClick={submit} disabled={busy}>
                 <Send /> {busy ? 'Enviando…' : 'Enviar notificación'}
               </Button>
@@ -193,15 +234,13 @@ function NewView() {
           </CardContent>
         </Card>
 
-        <Card className="self-start">
-          <CardHeader>
-            <CardTitle>Vista previa de la solicitud</CardTitle>
-            <CardDescription>JSON enviado a la API</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <pre className="overflow-auto rounded-lg bg-primary p-4 font-mono text-xs text-primary-foreground">{`POST /v1/notifications\nIdempotency-Key: ${key}\n\n${JSON.stringify(payload, null, 2)}`}</pre>
-            <div>
-              <p className="mb-1 font-heading text-[15px] font-bold">Ruta prevista</p>
+        <div className="space-y-4 self-start md:sticky md:top-16">
+          <Card>
+            <CardHeader>
+              <CardTitle>Ruta prevista</CardTitle>
+              <CardDescription>Así viajará la solicitud desde que llega hasta la entrega</CardDescription>
+            </CardHeader>
+            <CardContent>
               {fallback ? (
                 <RoutePreview
                   queue={QUEUE[priority]}
@@ -215,13 +254,22 @@ function NewView() {
                   quedará como fallida.
                 </p>
               )}
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="mt-3 text-xs text-muted-foreground">
                 La factoría crea el emisor del canal; si el proveedor falla, la estrategia pasa al siguiente
                 canal con dato de contacto.
               </p>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Solicitud a la API</CardTitle>
+              <CardDescription>JSON que se envía</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <pre className="max-h-72 overflow-auto rounded-lg bg-primary p-4 font-mono text-xs text-primary-foreground">{`POST /v1/notifications\nIdempotency-Key: ${key}\n\n${JSON.stringify(payload, null, 2)}`}</pre>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </>
   );

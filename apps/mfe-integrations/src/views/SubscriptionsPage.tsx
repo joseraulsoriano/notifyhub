@@ -181,20 +181,31 @@ function SubscriptionsView() {
                 />
               </div>
               <fieldset className="grid gap-2">
-                <legend className="text-sm font-medium">Eventos</legend>
-                {EVENTS.map((item) => (
-                  <label key={item.value} className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={events.includes(item.value)}
-                      onChange={(event) => toggleEvent(item.value, event.target.checked)}
-                    />
-                    {item.label}
-                    <Badge variant="secondary" className="font-mono text-[10px]">
-                      {item.value}
-                    </Badge>
-                  </label>
-                ))}
+                <legend className="mb-1 text-sm font-medium">Eventos que recibirá</legend>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {EVENTS.map((item) => {
+                    const on = events.includes(item.value);
+                    return (
+                      <label
+                        key={item.value}
+                        className={`flex cursor-pointer items-start gap-2.5 rounded-lg border p-3 text-sm transition-colors ${
+                          on ? 'border-primary bg-secondary' : 'hover:bg-secondary/50'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          className="mt-0.5"
+                          checked={on}
+                          onChange={(event) => toggleEvent(item.value, event.target.checked)}
+                        />
+                        <span>
+                          <span className="block font-medium">{item.label}</span>
+                          <span className="font-mono text-[11px] text-muted-foreground">{item.value}</span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
               </fieldset>
               <Button type="submit" disabled={saving || events.length === 0}>
                 <Webhook /> {saving ? 'Guardando…' : 'Crear suscripción'}
@@ -221,27 +232,37 @@ function SubscriptionsView() {
           <p className="max-w-md text-sm text-muted-foreground">
             Registra un sistema destino para dejar preparada su configuración de eventos.
           </p>
+          {!formOpen && (
+            <Button onClick={() => setFormOpen(true)}>
+              <Plus /> Nueva suscripción
+            </Button>
+          )}
         </Card>
       ) : (
         <Card className="p-2">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Suscriptor</TableHead>
-                <TableHead>URL destino</TableHead>
-                <TableHead>Eventos</TableHead>
-                <TableHead>Activa</TableHead>
+                <TableHead>Destino</TableHead>
+                <TableHead>Escucha</TableHead>
+                <TableHead className="w-40">Estado</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {subscriptions.map((subscription) => (
                 <TableRow key={subscription.id}>
-                  <TableCell className="font-medium">{subscription.subscriberName}</TableCell>
-                  <TableCell className="max-w-[24rem] truncate font-mono text-xs">
-                    {subscription.targetUrl}
+                  <TableCell>
+                    <p className="font-medium">{subscription.subscriberName}</p>
+                    <p className="max-w-[26rem] truncate font-mono text-xs text-muted-foreground">
+                      {subscription.targetUrl}
+                    </p>
                   </TableCell>
                   <TableCell>
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap items-center gap-1">
+                      <span className="mr-1 text-xs text-muted-foreground">
+                        {subscription.eventTypes.length}{' '}
+                        {subscription.eventTypes.length === 1 ? 'evento' : 'eventos'}
+                      </span>
                       {subscription.eventTypes.map((eventType) => (
                         <Badge key={eventType} variant="secondary" className="font-mono text-[10px]">
                           {eventType}
@@ -250,11 +271,18 @@ function SubscriptionsView() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Switch
-                      checked={subscription.active}
-                      onCheckedChange={(active) => void setActive(subscription, active)}
-                      aria-label={`Activar ${subscription.subscriberName}`}
-                    />
+                    <div className="flex items-center gap-2.5">
+                      <Switch
+                        checked={subscription.active}
+                        onCheckedChange={(active) => void setActive(subscription, active)}
+                        aria-label={`Activar ${subscription.subscriberName}`}
+                      />
+                      <span
+                        className={`text-xs font-medium ${subscription.active ? 'text-success' : 'text-muted-foreground'}`}
+                      >
+                        {subscription.active ? 'Activa' : 'Pausada'}
+                      </span>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

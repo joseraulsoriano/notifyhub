@@ -8,6 +8,7 @@ import type {
 import {
   CHANNEL_LABEL,
   NEEDS_ATTENTION,
+  ActivityChart,
   NotificationItem,
   PRIORITY_LABEL,
   dayLabel,
@@ -135,6 +136,7 @@ function NotificationsView() {
     [all, q, ch, pr, onlyAttention],
   );
   const rows = useMemo(() => base.filter(TABS.find((t) => t.id === tab)!.match), [base, tab]);
+  const maxLatency = useMemo(() => Math.max(0, ...all.map((n) => n.totalLatencyMs)), [all]);
   const groups = useMemo(() => {
     const g = new Map<string, NotificationListItem[]>();
     rows.forEach((n) => g.set(dayLabel(n.createdAt), [...(g.get(dayLabel(n.createdAt)) ?? []), n]));
@@ -180,6 +182,15 @@ function NotificationsView() {
               </Button>
             </Card>
           )}
+          <Card className="mb-4 gap-2 p-4">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 className="text-sm font-semibold">Actividad</h2>
+              <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                {all.length} {all.length === 1 ? 'notificación' : 'notificaciones'}
+              </span>
+            </div>
+            <ActivityChart items={all} height={56} />
+          </Card>
           <Tabs value={tab} onValueChange={(v) => setTab(v as string)} className="mb-3">
             <TabsList className="h-auto flex-wrap">
               {TABS.map((t) => (
@@ -196,11 +207,11 @@ function NotificationsView() {
             </TabsList>
           </Tabs>
 
-          <div className="mb-4 flex flex-wrap items-center gap-3">
+          <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border bg-card p-2">
             <div className="relative min-w-60 flex-1">
               <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
               <Input
-                className="pl-9"
+                className="border-0 bg-transparent pl-9 shadow-none focus-visible:ring-0"
                 placeholder="Buscar por asunto, ID o Idempotency-Key"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
@@ -208,13 +219,13 @@ function NotificationsView() {
             </div>
             <FilterSelect value={ch} onChange={setCh} options={withAll('Todos los canales', CHANNEL_LABEL)} />
             <FilterSelect value={pr} onChange={setPr} options={withAll('Toda prioridad', PRIORITY_LABEL)} />
-            <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <label className="flex cursor-pointer items-center gap-2 border-l pl-3 pr-2 text-sm">
               <Switch checked={onlyAttention} onCheckedChange={setOnlyAttention} />
               Sólo requieren atención
             </label>
           </div>
 
-          <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_420px]">
+          <div className="grid items-start gap-4 md:grid-cols-[minmax(0,1fr)_380px]">
             <Card className="gap-0 overflow-hidden p-0">
               {groups.map(([day, items]) => (
                 <section key={day}>
@@ -228,6 +239,7 @@ function NotificationsView() {
                       item={n}
                       selected={n.id === sel}
                       onSelect={(x) => setSel(x.id)}
+                      maxLatencyMs={maxLatency}
                     />
                   ))}
                 </section>

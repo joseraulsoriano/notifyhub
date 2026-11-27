@@ -95,11 +95,11 @@ function AuditView() {
         <LoadError error={error} />
       ) : (
         <>
-          <div className="mb-4 flex flex-wrap gap-3">
+          <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border bg-card p-2">
             <div className="relative min-w-60 flex-1">
               <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
               <Input
-                className="pl-9"
+                className="border-0 bg-transparent pl-9 shadow-none focus-visible:ring-0"
                 placeholder="Filtrar por notificación, evento o proveedor"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
@@ -114,6 +114,9 @@ function AuditView() {
                 ...EVENTS.map((e) => ({ value: e, label: e })),
               ]}
             />
+            <span className="border-l pl-3 pr-2 font-mono text-xs tabular-nums text-muted-foreground">
+              {rows.length} {rows.length === 1 ? 'evento' : 'eventos'}
+            </span>
           </div>
           <Card className="p-2">
             <Table>

@@ -1,4 +1,5 @@
 import { LayoutDashboard, Mail, Plus, ScrollText, Settings2, Webhook } from 'lucide-react';
+import { Button } from '@notifyhub/mfe-runtime/ui/button';
 import {
   Sidebar,
   SidebarContent,
@@ -20,7 +21,6 @@ const GROUPS = [
     items: [
       { href: '/', title: 'Resumen', icon: LayoutDashboard },
       { href: '/notificaciones', title: 'Notificaciones', icon: Mail },
-      { href: '/nueva', title: 'Nueva solicitud', icon: Plus },
     ],
   },
   {
@@ -43,6 +43,11 @@ export function AppSidebar({ path }: { path: string }) {
           <Logo />
         </a>
       </SidebarHeader>
+      <div className="px-4 pb-3">
+        <Button render={<a href="/nueva" />} className="w-full justify-start gap-2">
+          <Plus className="size-4" /> Nueva solicitud
+        </Button>
+      </div>
       <SidebarContent className="px-3">
         {GROUPS.map((g) => (
           <SidebarGroup key={g.label} className="px-0">

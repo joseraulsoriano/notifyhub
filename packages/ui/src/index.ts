@@ -16,6 +16,8 @@ export {
   PRIORITY_LABEL,
   STATUS_LABEL,
 } from './labels';
+export { ActivityChart, type ActivityChartProps } from './activity-chart';
+export { bucketize, outcomeOf, type ActivityBucket, type Outcome } from './activity';
 export { Logo, LogoMark } from './logo';
 export { NotificationDetail, type NotificationDetailProps } from './notification-detail';
 export { NotificationItem, type NotificationItemProps } from './notification-item';

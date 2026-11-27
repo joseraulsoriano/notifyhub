@@ -1,5 +1,6 @@
 import { shellLink } from '@notifyhub/mfe-runtime';
 import {
+  ActivityChart,
   RouteMap,
   StatusBadge,
   computeFlows,
@@ -18,20 +19,44 @@ import { NotificationSheet } from '@notifyhub/mfe-runtime';
 import { Page } from '@notifyhub/mfe-runtime';
 import { LoadError, PageHeader } from '@notifyhub/mfe-runtime';
 
-function Stat({ value, unit, label, tone }: { value: string; unit?: string; label: string; tone?: string }) {
+function Kpi({
+  label,
+  value,
+  unit,
+  hint,
+  tone,
+  fill,
+}: {
+  label: string;
+  value: string;
+  unit?: string;
+  hint: string;
+  tone?: string;
+  /** 0–100: dibuja una barra de avance bajo el valor. */
+  fill?: number | null;
+}) {
   return (
-    <div>
-      <div
+    <Card className="gap-0 p-4">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">{label}</p>
+      <p
         className={cn(
-          'font-heading text-[28px] font-extrabold leading-none tracking-tight tabular-nums',
+          'mt-2 font-heading text-[32px] font-extrabold leading-none tracking-tight tabular-nums',
           tone,
         )}
       >
         {value}
-        {unit && <span className="ml-0.5 text-sm font-bold">{unit}</span>}
-      </div>
-      <div className="mt-1 text-xs text-muted-foreground">{label}</div>
-    </div>
+        {unit && <span className="ml-0.5 text-base font-bold">{unit}</span>}
+      </p>
+      {fill !== undefined && (
+        <div className="mt-3 h-1 overflow-hidden rounded-full bg-secondary" aria-hidden>
+          <div
+            className={cn('h-full rounded-full', tone === 'text-transfer-ink' ? 'bg-transfer' : 'bg-success')}
+            style={{ width: `${Math.max(0, Math.min(100, fill ?? 0))}%` }}
+          />
+        </div>
+      )}
+      <p className="mt-2 text-xs text-muted-foreground">{hint}</p>
+    </Card>
   );
 }
 
@@ -61,25 +86,21 @@ function DashboardView() {
   const s = summarize(items);
   const inFlight = (p: Priority) =>
     items.filter((i) => i.priority === p && IN_FLIGHT.includes(i.status)).length;
+  const maxLatency = Math.max(0, ...items.map((i) => i.totalLatencyMs));
 
   return (
     <>
-      <PageHeader title="Resumen" description={`Últimas ${items.length} notificaciones · todos los canales`}>
-        <div className="mr-2 flex gap-8">
-          <Stat value={num(s.total, 0)} label="notificaciones" />
-          <Stat value={num(s.deliveryRate)} unit={s.deliveryRate === null ? '' : '%'} label="llegan" />
-          <Stat
-            value={num(s.fallbackRate)}
-            unit={s.fallbackRate === null ? '' : '%'}
-            label="por respaldo"
-            tone="text-transfer-ink"
-          />
-          <Stat
-            value={num(s.p95LatencyMs, 0)}
-            unit={s.p95LatencyMs === null ? '' : 'ms'}
-            label="p95 de entrega"
-          />
-        </div>
+      <PageHeader
+        title="Resumen"
+        description={`Últimas ${items.length} notificaciones · todos los canales · se actualiza cada 3 s`}
+      >
+        <span className="mr-1 hidden items-center gap-1.5 text-xs text-muted-foreground sm:inline-flex">
+          <span className="relative flex size-2">
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-success/60" />
+            <span className="relative inline-flex size-2 rounded-full bg-success" />
+          </span>
+          En vivo
+        </span>
         <Button render={<a {...shellLink('/nueva')} />}>
           <Plus /> Nueva solicitud
         </Button>
@@ -88,70 +109,115 @@ function DashboardView() {
       {list.error && !list.data ? (
         <LoadError error={list.error} />
       ) : (
-        <>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <Kpi label="Notificaciones" value={num(s.total, 0)} hint="en la ventana consultada" />
+            <Kpi
+              label="Entrega"
+              value={num(s.deliveryRate)}
+              unit={s.deliveryRate === null ? '' : '%'}
+              hint="llegan a su destinatario"
+              fill={s.deliveryRate}
+            />
+            <Kpi
+              label="Por respaldo"
+              value={num(s.fallbackRate)}
+              unit={s.fallbackRate === null ? '' : '%'}
+              hint="cambiaron de canal"
+              tone="text-transfer-ink"
+              fill={s.fallbackRate}
+            />
+            <Kpi
+              label="p95 de entrega"
+              value={num(s.p95LatencyMs, 0)}
+              unit={s.p95LatencyMs === null ? '' : 'ms'}
+              hint="el 95 % llega en menos de esto"
+            />
+          </div>
+
           <Card>
             <CardHeader>
-              <CardTitle>Mapa de rutas</CardTitle>
-              <CardDescription>
-                Del pedido recibido a la entrega. Los transbordos naranjas son envíos que cambiaron de canal.
-              </CardDescription>
+              <CardTitle>Actividad</CardTitle>
+              <CardDescription>Notificaciones recibidas a lo largo del tiempo, por resultado</CardDescription>
             </CardHeader>
             <CardContent>
-              <RouteMap flows={flows} providers={providers.data ?? []} transfers={transfers} />
+              <ActivityChart items={items} height={104} />
             </CardContent>
           </Card>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-3">
-            <Card className="gap-0 py-0 lg:col-span-2">
-              <div className="flex items-center gap-3 border-b px-5 py-4">
-                <div className="flex-1">
-                  <CardTitle>Actividad reciente</CardTitle>
-                  <CardDescription>Haz clic en una fila para ver su ruta</CardDescription>
-                </div>
-                <Button variant="ghost" size="sm" render={<a {...shellLink('/notificaciones')} />}>
-                  Ver todas →
-                </Button>
-              </div>
-              <CardContent className="p-0">
-                {items.slice(0, 6).map((n) => (
-                  <NotificationItem key={n.id} item={n} compact onSelect={setSel} />
-                ))}
-                {items.length === 0 && (
-                  <p className="px-5 py-10 text-center text-sm text-muted-foreground">
-                    {list.loading ? 'Cargando…' : 'Aún no hay notificaciones.'}
-                  </p>
-                )}
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle>Mapa de rutas</CardTitle>
+                <CardDescription>
+                  Del pedido recibido a la entrega. Los transbordos naranjas son envíos que cambiaron de canal.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <RouteMap flows={flows} providers={providers.data ?? []} transfers={transfers} />
               </CardContent>
             </Card>
 
-            <Card className="self-start">
-              <CardHeader>
-                <CardTitle>En curso</CardTitle>
-                <CardDescription>Notificaciones que aún no terminan, por prioridad</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {PRIORITIES.map((p) => (
-                  <div key={p.key} className="flex items-center gap-3 text-sm">
-                    <span className={cn('size-2.5 rounded-full', p.tone)} />
-                    <span className="flex-1 font-medium">Prioridad {p.label}</span>
-                    <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                      {inFlight(p.key)}
-                    </span>
-                  </div>
-                ))}
-                <div className="space-y-2 border-t pt-3">
-                  <p className="text-xs font-medium text-muted-foreground">Proveedores</p>
+            <div className="space-y-4 self-start">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Salud de proveedores</CardTitle>
+                  <CardDescription>Estado actual de cada canal de salida</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2.5">
                   {(providers.data ?? []).map((p) => (
                     <div key={p.code} className="flex items-center justify-between text-xs">
                       <span className="font-mono">{p.code}</span>
                       <StatusBadge status={p.health} label={p.enabled ? undefined : 'Deshabilitado'} />
                     </div>
                   ))}
-                </div>
-              </CardContent>
-            </Card>
+                  {(providers.data ?? []).length === 0 && (
+                    <p className="text-xs text-muted-foreground">Sin datos de proveedores.</p>
+                  )}
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>En curso</CardTitle>
+                  <CardDescription>Aún no terminan, por prioridad</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {PRIORITIES.map((p) => (
+                    <div key={p.key} className="flex items-center gap-3 text-sm">
+                      <span className={cn('size-2.5 rounded-full', p.tone)} />
+                      <span className="flex-1 font-medium">Prioridad {p.label}</span>
+                      <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                        {inFlight(p.key)}
+                      </span>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
           </div>
-        </>
+
+          <Card className="gap-0 py-0">
+            <div className="flex items-center gap-3 border-b px-5 py-4">
+              <div className="flex-1">
+                <CardTitle>Actividad reciente</CardTitle>
+                <CardDescription>Haz clic en una fila para ver su ruta</CardDescription>
+              </div>
+              <Button variant="ghost" size="sm" render={<a {...shellLink('/notificaciones')} />}>
+                Ver todas →
+              </Button>
+            </div>
+            <CardContent className="p-0">
+              {items.slice(0, 6).map((n) => (
+                <NotificationItem key={n.id} item={n} compact onSelect={setSel} maxLatencyMs={maxLatency} />
+              ))}
+              {items.length === 0 && (
+                <p className="px-5 py-10 text-center text-sm text-muted-foreground">
+                  {list.loading ? 'Cargando…' : 'Aún no hay notificaciones.'}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       )}
       <NotificationSheet item={sel} onClose={() => setSel(null)} />
     </>

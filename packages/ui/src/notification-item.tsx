@@ -10,6 +10,8 @@ export interface NotificationItemProps {
   /** Sin vista previa ni destinatario: para listas pequeñas como "actividad reciente". */
   compact?: boolean;
   onSelect?: (item: NotificationListItem) => void;
+  /** Latencia máxima de la lista: si se da, cada fila dibuja su barra de duración proporcional. */
+  maxLatencyMs?: number;
   /** Para pruebas: la hora de referencia de "hace 5 min". */
   now?: Date;
 }
@@ -20,7 +22,7 @@ const SETTLED = ['DELIVERED', 'SENT'];
  * Fila de una notificación: estación de estado, asunto, canal como línea de metro y, si hubo fallback, el
  * transbordo entre canales. El estado se escribe con texto cuando no es "entregada".
  */
-export function NotificationItem({ item, selected, compact, onSelect, now }: NotificationItemProps) {
+export function NotificationItem({ item, selected, compact, onSelect, now, maxLatencyMs }: NotificationItemProps) {
   const attention = NEEDS_ATTENTION.includes(item.status);
   const transferred =
     item.usedFallback && item.finalChannel !== null && item.finalChannel !== item.preferredChannel;
@@ -73,6 +75,14 @@ export function NotificationItem({ item, selected, compact, onSelect, now }: Not
         {item.attemptCount > 0 && (
           <span className="mt-1.5 block font-mono tabular-nums text-muted-foreground">
             {item.totalLatencyMs.toLocaleString('en-US')} ms
+          </span>
+        )}
+        {maxLatencyMs !== undefined && maxLatencyMs > 0 && item.attemptCount > 0 && (
+          <span aria-hidden className="mt-1 ml-auto block h-1 w-20 overflow-hidden rounded-full bg-secondary">
+            <span
+              className={cn('block h-full rounded-full', transferred ? 'bg-transfer' : 'bg-running')}
+              style={{ width: `${Math.max(4, Math.min(100, (item.totalLatencyMs / maxLatencyMs) * 100))}%` }}
+            />
           </span>
         )}
       </div>
