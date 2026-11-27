@@ -1,7 +1,8 @@
 ---
 import Layout from "@/layouts/Layout.astro"
-import { NewNotification } from "@/components/app/new-notification"
+import { RemoteMfe } from "@/components/app/remote-mfe"
+import { MICROFRONTENDS } from "@/lib/microfrontends"
 ---
 <Layout title="Nueva solicitud">
-  <NewNotification client:load />
+  <RemoteMfe client:only="react" name="notifications-new" title="Nueva solicitud" src={`${MICROFRONTENDS.notifications}/nueva`} />
 </Layout>

@@ -1,7 +1,8 @@
 ---
 import Layout from "@/layouts/Layout.astro"
-import { Dashboard } from "@/components/app/dashboard"
+import { RemoteMfe } from "@/components/app/remote-mfe"
+import { MICROFRONTENDS } from "@/lib/microfrontends"
 ---
 <Layout title="Resumen">
-  <Dashboard client:load />
+  <RemoteMfe client:only="react" name="dashboard" title="Resumen" src={MICROFRONTENDS.dashboard} />
 </Layout>

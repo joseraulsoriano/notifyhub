@@ -1,7 +1,8 @@
 ---
 import Layout from "@/layouts/Layout.astro"
-import { AuditLog } from "@/components/app/audit-log"
+import { RemoteMfe } from "@/components/app/remote-mfe"
+import { MICROFRONTENDS } from "@/lib/microfrontends"
 ---
 <Layout title="Bitácora de auditoría">
-  <AuditLog client:load />
+  <RemoteMfe client:only="react" name="operations-audit" title="Bitácora de auditoría" src={`${MICROFRONTENDS.operations}/bitacora`} />
 </Layout>

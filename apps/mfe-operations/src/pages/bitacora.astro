@@ -1,0 +1,9 @@
+---
+import '../styles/app.css';
+import MfeDocument from '@notifyhub/mfe-runtime/MfeDocument.astro';
+import { AuditApp } from '../App';
+---
+
+<MfeDocument title="Bitácora de auditoría">
+  <AuditApp client:load />
+</MfeDocument>

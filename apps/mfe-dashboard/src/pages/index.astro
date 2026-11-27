@@ -1,0 +1,9 @@
+---
+import '../styles/app.css';
+import MfeDocument from '@notifyhub/mfe-runtime/MfeDocument.astro';
+import { DashboardApp } from '../App';
+---
+
+<MfeDocument title="Resumen">
+  <DashboardApp client:load />
+</MfeDocument>

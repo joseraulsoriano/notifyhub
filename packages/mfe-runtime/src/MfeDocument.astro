@@ -1,0 +1,28 @@
+---
+/**
+ * Documento HTML común del shell y de los microfrontends: mismas tipografías. Cada app importa su hoja
+ * de entrada (que a su vez importa `@notifyhub/mfe-runtime/styles.css`) en la página.
+ * Cada familia de Fontshare va en su propia petición: pedirlas juntas devuelve otra familia (ver DESIGN.md).
+ */
+interface Props {
+  title: string;
+}
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="icon" href="data:," />
+    <link rel="preconnect" href="https://api.fontshare.com" />
+    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@500,700,800&display=swap" />
+    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" />
+    <title>{title} · NotifyHub</title>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

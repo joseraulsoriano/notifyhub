@@ -1,0 +1,9 @@
+---
+import '../styles/app.css';
+import MfeDocument from '@notifyhub/mfe-runtime/MfeDocument.astro';
+import { NewRequestApp } from '../App';
+---
+
+<MfeDocument title="Nueva solicitud">
+  <NewRequestApp client:load />
+</MfeDocument>

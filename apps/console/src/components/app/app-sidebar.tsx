@@ -10,9 +10,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from '@/components/ui/sidebar';
+} from '@notifyhub/mfe-runtime/ui/sidebar';
 import { Logo } from '@notifyhub/ui';
-import { useConnection } from '@/lib/connection';
+import { useConnection } from '@notifyhub/mfe-runtime';
 
 const GROUPS = [
   {

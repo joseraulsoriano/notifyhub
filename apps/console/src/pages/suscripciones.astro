@@ -1,7 +1,8 @@
 ---
 import Layout from "@/layouts/Layout.astro"
-import { SubscriptionsPage } from "@/components/app/subscriptions-page"
+import { RemoteMfe } from "@/components/app/remote-mfe"
+import { MICROFRONTENDS } from "@/lib/microfrontends"
 ---
 <Layout title="Suscripciones">
-  <SubscriptionsPage client:load />
+  <RemoteMfe client:only="react" name="integrations" title="Suscripciones" src={MICROFRONTENDS.integrations} />
 </Layout>

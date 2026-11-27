@@ -1,7 +1,8 @@
 ---
 import Layout from "@/layouts/Layout.astro"
-import { ProvidersPage } from "@/components/app/providers-page"
+import { RemoteMfe } from "@/components/app/remote-mfe"
+import { MICROFRONTENDS } from "@/lib/microfrontends"
 ---
 <Layout title="Proveedores y ruteo">
-  <ProvidersPage client:load />
+  <RemoteMfe client:only="react" name="operations-providers" title="Proveedores y ruteo" src={MICROFRONTENDS.operations} />
 </Layout>

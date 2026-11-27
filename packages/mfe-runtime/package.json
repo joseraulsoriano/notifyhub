@@ -1,0 +1,39 @@
+{
+  "name": "@notifyhub/mfe-runtime",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Kit compartido del shell y los microfrontends de NotifyHub: dise\u00f1o, conexi\u00f3n, cliente demo y puente con el shell.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./ui/*": "./src/ui/*.tsx",
+    "./styles.css": "./src/styles.css",
+    "./MfeDocument.astro": "./src/MfeDocument.astro"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.9.0",
+    "@notifyhub/client": "workspace:*",
+    "@notifyhub/ui": "workspace:*",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.55.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "shadcn": "^4.21.4",
+    "sonner": "^2.0.8",
+    "tailwind-merge": "^3.7.0",
+    "tailwindcss": "^4.3.3",
+    "tw-animate-css": "^1.4.0"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "astro": "7.3.8",
+    "typescript": "5.8.3",
+    "vitest": "^3.1.0"
+  }
+}
