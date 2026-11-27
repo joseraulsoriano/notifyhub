@@ -181,3 +181,27 @@ test(
     assert.equal(offline.data.online, false);
   },
 );
+
+test("el tema de push (ntfy) se guarda, valida y borra", { skip: !baseUrl }, async () => {
+  const login = await request("/api/auth/login", {
+    method: "POST",
+    body: { email: process.env.TASKFLOW_ADMIN_EMAIL, password: process.env.TASKFLOW_ADMIN_PASSWORD },
+  });
+  const token = login.data.accessToken;
+  const topic = `taskflow-test-${randomUUID().slice(0, 8)}`;
+  assert.equal((await request("/api/notifications/push")).status, 401);
+  assert.equal((await request("/api/notifications/push", { token, method: "PUT", body: { topic } })).status, 200);
+  const current = await request("/api/notifications/push", { token });
+  assert.equal(current.status, 200);
+  assert.equal(current.data.topic, topic);
+  const invalid = await request("/api/notifications/push", { token, method: "PUT", body: { topic: "corto" } });
+  assert.equal(invalid.status, 400);
+  assert.equal(invalid.data.error, "invalid_topic");
+  const removed = await request("/api/notifications/push", { token, method: "DELETE" });
+  assert.equal(removed.data.removed, true);
+  assert.equal((await request("/api/notifications/push", { token })).data.topic, null);
+  // Sin tema no se llama a ntfy: responde 404.
+  const test = await request("/api/notifications/push/test", { token, method: "POST" });
+  assert.equal(test.status, 404);
+  assert.equal(test.data.error, "push_not_configured");
+});

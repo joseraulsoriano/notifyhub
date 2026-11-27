@@ -13,7 +13,7 @@ import {
   type ServerNotification,
   type Session,
 } from '@taskflow/kit';
-import { Check, Clock, Radio, ShieldCheck } from 'lucide-react';
+import { Check, Clock, Copy, Radio, ShieldCheck, Smartphone } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 const api = createApi(API_URL, getToken);
@@ -26,6 +26,133 @@ const describe = (n: ServerNotification): string => {
   const status = n.payload.task?.status ? STATUS_LABEL[n.payload.task.status] : 'otro estado';
   return `«${title}» cambió a ${status}`;
 };
+
+/** Tema aleatorio: `taskflow-` + 16 caracteres [a-z0-9] (el ligero sesgo del módulo es irrelevante para un tema difícil de adivinar). */
+const suggestTopic = (): string => {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return `taskflow-${Array.from(bytes, (b) => chars[b % chars.length]).join('')}`;
+};
+
+function PushCard() {
+  const [topic, setTopic] = useState<string | null | undefined>(undefined); // undefined = cargando
+  const [suggested, setSuggested] = useState(suggestTopic);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    api.notifications.push.get().then(
+      (r) => setTopic(r.topic),
+      (e) => {
+        setTopic(null);
+        fail(e, 'No se pudo leer tu configuración de push.');
+      },
+    );
+  }, []);
+
+  const run = async (action: () => Promise<void>) => {
+    setBusy(true);
+    try {
+      await action();
+    } finally {
+      setBusy(false);
+    }
+  };
+  const activate = () =>
+    run(async () => {
+      try {
+        await api.notifications.push.set(suggested);
+        setTopic(suggested);
+        notify.success('Notificaciones en tu celular activadas');
+      } catch (e) {
+        fail(e, 'No se pudo activar.');
+      }
+    });
+  const sendTest = () =>
+    run(async () => {
+      try {
+        await api.notifications.push.test();
+        notify.success('Prueba enviada: revisa tu celular');
+      } catch (e) {
+        fail(e, 'No se pudo enviar la prueba.');
+      }
+    });
+  const deactivate = () =>
+    run(async () => {
+      try {
+        await api.notifications.push.remove();
+        setTopic(null);
+        setSuggested(suggestTopic());
+        notify.success('Notificaciones en tu celular desactivadas');
+      } catch (e) {
+        fail(e, 'No se pudo desactivar.');
+      }
+    });
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(topic ?? '');
+      notify.success('Tema copiado');
+    } catch {
+      notify.error('No se pudo copiar. Selecciónalo y cópialo a mano.');
+    }
+  };
+
+  const shown = topic ?? suggested;
+  return (
+    <section className="rounded-xl border bg-card p-4" aria-label="Notificaciones en tu celular">
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 className="flex items-center gap-1.5 text-sm font-bold">
+          <Smartphone className="size-4" /> Notificaciones en tu celular
+        </h2>
+        {topic && <Badge variant="secondary">Activo</Badge>}
+      </div>
+      {topic === undefined ? (
+        <p className="mt-2 text-sm text-muted-foreground">Cargando…</p>
+      ) : (
+        <div className="mt-3 grid gap-4 md:grid-cols-2">
+          <ol className="list-decimal space-y-1.5 pl-5 text-sm text-muted-foreground">
+            <li>
+              Instala la app <strong className="text-foreground">ntfy</strong> (iOS o Android): es gratis y sin cuenta.
+            </li>
+            <li>En la app toca «+» y suscríbete al tema de la derecha (servidor ntfy.sh).</li>
+            <li>{topic ? 'Pulsa «Enviar prueba» para confirmar que llega.' : 'Pulsa «Activar» y luego «Enviar prueba».'}</li>
+          </ol>
+          <div className="min-w-0 space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">{topic ? 'Tu tema' : 'Tema sugerido'}</p>
+            <div className="flex items-center gap-2">
+              <code className="min-w-0 flex-1 truncate rounded-md border bg-background px-2 py-1.5 font-mono text-xs" title={shown}>
+                {shown}
+              </code>
+              {topic && (
+                <Button size="sm" variant="outline" onClick={() => void copy()} aria-label="Copiar tema">
+                  <Copy className="size-3.5" />
+                </Button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {topic ? (
+                <>
+                  <Button size="sm" disabled={busy} onClick={() => void sendTest()}>
+                    Enviar prueba
+                  </Button>
+                  <Button size="sm" variant="outline" disabled={busy} onClick={() => void deactivate()}>
+                    Desactivar
+                  </Button>
+                </>
+              ) : (
+                <Button size="sm" disabled={busy} onClick={() => void activate()}>
+                  Activar
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      <p className="mt-3 text-xs text-muted-foreground">
+        El tema funciona como una clave: quien lo conozca puede leer tus avisos, así que no lo compartas. A ntfy solo viaja el título de la tarea y su estado.
+      </p>
+    </section>
+  );
+}
 
 function Countdown({ until }: { until: number }) {
   const [now, setNow] = useState(Date.now());
@@ -116,6 +243,8 @@ export function TeamView({ session }: { session: Session }) {
           <p className="mt-1 text-xs text-muted-foreground">Lo registra el presence-service en Redis y se renueva al iniciar sesión.</p>
         </div>
       </section>
+
+      <PushCard />
 
       <div className="grid gap-5 md:grid-cols-2">
         <section aria-label="Equipo">

@@ -3,6 +3,7 @@ const { pool } = require("../../shared/db");
 const { asyncRoute, createApp, HttpError, listen } = require("../../shared/http");
 const { createRedisClient, connect } = require("../../shared/redis");
 const { requireActor } = require("../../shared/identity");
+const { buildPush, isValidTopic, ntfyServer, sendPush } = require("../../shared/ntfy");
 
 const app = createApp("notification-service");
 const subscriber = createRedisClient();
@@ -29,6 +30,62 @@ app.get(
       connections?.delete(res);
       if (connections?.size === 0) clients.delete(actor.id);
     });
+  }),
+);
+
+// Push al celular vía ntfy. Van antes de cualquier ruta paramétrica.
+app.get(
+  "/push",
+  asyncRoute(async (req, res) => {
+    const actor = requireActor(req);
+    const { rows } = await pool.query("SELECT topic FROM notifications.push_targets WHERE user_id = $1", [actor.id]);
+    res.json({ topic: rows[0]?.topic ?? null, server: ntfyServer() });
+  }),
+);
+
+app.put(
+  "/push",
+  asyncRoute(async (req, res) => {
+    const actor = requireActor(req);
+    const topic = req.body?.topic;
+    if (!isValidTopic(topic)) throw new HttpError(400, "invalid_topic");
+    await pool.query(
+      `INSERT INTO notifications.push_targets (user_id, topic) VALUES ($1, $2)
+       ON CONFLICT (user_id) DO UPDATE SET topic = EXCLUDED.topic`,
+      [actor.id, topic],
+    );
+    res.json({ topic });
+  }),
+);
+
+app.delete(
+  "/push",
+  asyncRoute(async (req, res) => {
+    const actor = requireActor(req);
+    const result = await pool.query("DELETE FROM notifications.push_targets WHERE user_id = $1", [actor.id]);
+    res.json({ removed: result.rowCount > 0 });
+  }),
+);
+
+app.post(
+  "/push/test",
+  asyncRoute(async (req, res) => {
+    const actor = requireActor(req);
+    const { rows } = await pool.query("SELECT topic FROM notifications.push_targets WHERE user_id = $1", [actor.id]);
+    if (!rows[0]) throw new HttpError(404, "push_not_configured");
+    try {
+      await sendPush({
+        server: ntfyServer(),
+        topic: rows[0].topic,
+        title: "Prueba de TaskFlow",
+        message: "Las notificaciones en tu celular funcionan.",
+        tags: ["white_check_mark"],
+      });
+    } catch (error) {
+      console.error("ntfy test push failed:", error.name, error.message);
+      throw new HttpError(502, "push_failed");
+    }
+    res.json({ sent: true });
   }),
 );
 
@@ -60,6 +117,17 @@ app.patch(
     res.json({ notification: rows[0] });
   }),
 );
+
+// Un fallo de ntfy nunca debe romper el manejo del evento ni el SSE: se captura y se registra sin datos personales.
+async function pushToPhone(userId, event) {
+  try {
+    const { rows } = await pool.query("SELECT topic FROM notifications.push_targets WHERE user_id = $1", [userId]);
+    if (!rows[0]) return;
+    await sendPush({ server: ntfyServer(), topic: rows[0].topic, ...buildPush(event.eventType, event.task) });
+  } catch (error) {
+    console.error("ntfy push failed:", error.name, error.message);
+  }
+}
 
 async function handleTaskEvent(message) {
   let event;
@@ -108,6 +176,7 @@ async function handleTaskEvent(message) {
     for (const connection of clients.get(userId) || []) {
       connection.write(`id: ${saved.id}\nevent: notification\ndata: ${JSON.stringify(saved)}\n\n`);
     }
+    await pushToPhone(userId, event);
   }
 }
 
@@ -124,6 +193,13 @@ async function initialize() {
       read_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       UNIQUE (event_id, user_id)
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS notifications.push_targets (
+      user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+      topic TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT now()
     )
   `);
   await pool.query("CREATE INDEX IF NOT EXISTS notification_user_created_idx ON notifications.items (user_id, created_at DESC)");

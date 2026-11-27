@@ -6,6 +6,8 @@
   "compatibility_date": "2026-10-09",
   // `pg` y `node:crypto` (hash de API keys e idempotencia) necesitan las APIs de Node.
   "compatibility_flags": ["nodejs_compat"],
+  // Incluye docs/api/openapi.yaml en el bundle como texto (se sirve en /openapi.yaml).
+  "rules": [{ "type": "Text", "globs": ["**/*.yaml"], "fallthrough": true }],
   "observability": {
     "enabled": true,
     "logs": { "enabled": true, "head_sampling_rate": 1 },

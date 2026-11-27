@@ -3,6 +3,7 @@ import type {
   DirectoryUser,
   Member,
   Project,
+  PushConfig,
   Role,
   ServerNotification,
   Session,
@@ -34,6 +35,9 @@ const MESSAGES: Record<string, string> = {
   session_expired: 'Tu sesión expiró por inactividad. Inicia sesión de nuevo.',
   project_leader_or_admin_required: 'Solo el líder del proyecto o un administrador puede hacer esto.',
   admin_required: 'Solo un administrador puede hacer esto.',
+  invalid_topic: 'El tema debe tener de 12 a 64 caracteres: letras, números, guion y guion bajo.',
+  push_not_configured: 'Primero activa las notificaciones en tu celular.',
+  push_failed: 'No se pudo enviar la prueba a ntfy. Reintenta en unos segundos.',
   upstream_unavailable: 'El servicio no responde. Reintenta en unos segundos.',
 };
 
@@ -135,6 +139,14 @@ export function createApi(baseUrl: string, getToken: () => string | null) {
         request<{ notifications: ServerNotification[] }>(`/api/notifications?limit=${limit}`),
       read: (id: string) =>
         request<{ notification: ServerNotification }>(`/api/notifications/${id}/read`, { method: 'PATCH' }),
+      /** Push al celular vía ntfy: un tema por usuario. */
+      push: {
+        get: () => request<PushConfig>('/api/notifications/push'),
+        set: (topic: string) =>
+          request<{ topic: string }>('/api/notifications/push', { method: 'PUT', body: { topic } }),
+        remove: () => request<{ removed: boolean }>('/api/notifications/push', { method: 'DELETE' }),
+        test: () => request<{ sent: true }>('/api/notifications/push/test', { method: 'POST' }),
+      },
       /** Abre el stream SSE (Server-Sent Events). EventSource no permite el encabezado Authorization: se usa fetch. */
       async stream(onNotification: (item: ServerNotification) => void, signal: AbortSignal): Promise<void> {
         const token = getToken();

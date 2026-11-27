@@ -21,6 +21,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { HTTPException } from 'hono/http-exception';
 import { auditEntry, detail, listItem, providerView, summary } from './http/presenters';
+import { docsRoutes } from './http/docs';
 import { httpProblem, toProblem } from './http/problem';
 import {
   CreateNotificationSchema,
@@ -109,6 +110,8 @@ export function createApp<B extends object = object>(open: (c: Context<AppEnv<B>
   });
 
   app.get('/health', (c) => c.json({ status: 'ok' }));
+  // Públicas: /docs y /openapi.yaml no pasan por la API key ni por el límite de tasa de /v1.
+  app.route('/', docsRoutes);
 
   const v1 = new Hono<AppEnv<B>>();
 

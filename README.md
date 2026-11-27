@@ -78,6 +78,8 @@ El contrato completo está en [docs/api/openapi.yaml](docs/api/openapi.yaml). La
 (plan gratuito): Hono, Queues, Hyperdrive hacia Neon y un Durable Object para el rate limit
 ([ADR-007](docs/adr/0007-workers-nativo.md)). Despliegue en [docs/despliegue.md](docs/despliegue.md).
 
+Documentación interactiva (Swagger UI): [/docs](https://notifyhub-api.sc202357155.workers.dev/docs) · contrato: [/openapi.yaml](https://notifyhub-api.sc202357155.workers.dev/openapi.yaml) (disponibles tras el próximo despliegue del Worker).
+
 ## Usarlo como librería
 
 Dos paquetes del monorepo, pensados para publicarse en npm:

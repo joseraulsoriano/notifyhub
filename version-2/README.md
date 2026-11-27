@@ -54,7 +54,8 @@ Para cambiar un usuario de rol, un admin usa `PATCH /api/auth/users/{id}/role` c
 
 ## Contrato y pruebas
 
-- API documentada en [`openapi.yaml`](./openapi.yaml).
+- API documentada en [`openapi.yaml`](./services/gateway/openapi.yaml).
+- Documentación interactiva: `/docs` (Swagger UI) y `/openapi.yaml`.
 - Pruebas unitarias de autorización: `npm test`.
 - Prueba de integración de gateway, auth, tareas, notificaciones y presencia: con Compose arriba, ejecuta `TASKFLOW_API_URL=http://localhost:8080 TASKFLOW_ADMIN_EMAIL=admin@example.com TASKFLOW_ADMIN_PASSWORD='ChangeMe-Now-123!' npm run test:integration`.
 - Variables y valores TTL: `.env.example`; JWT y sesiones duran 900 segundos por defecto.

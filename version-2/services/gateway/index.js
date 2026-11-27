@@ -1,11 +1,13 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
+const path = require("node:path");
 const { Readable } = require("node:stream");
 const { pipeline } = require("node:stream/promises");
 const { required } = require("../../shared/config");
 const { createRedisClient, connect } = require("../../shared/redis");
 const { internalHeaders, internalToken } = require("../../shared/internal-auth");
 const { cors, parseOrigins } = require("../../shared/cors");
+const { docsRouter } = require("../../shared/docs");
 
 /** Render entrega `host:puerto` de la red privada; docker-compose entrega la URL completa. */
 const baseUrl = (value) => (/^https?:\/\//.test(value || "") ? value : `http://${value}`);
@@ -45,6 +47,9 @@ app.get("/health/services", async (_req, res) => {
   }
   res.json({ gateway: { ok: true }, redis: redisState, services: Object.fromEntries(entries) });
 });
+
+// Documentación pública (Swagger UI + especificación), antes del middleware JWT.
+app.use(docsRouter({ specPath: path.join(__dirname, "openapi.yaml") }));
 
 function isPublic(req) {
   return req.method === "POST" && ["/api/auth/register", "/api/auth/login"].includes(req.path);

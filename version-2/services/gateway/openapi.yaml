@@ -1,0 +1,693 @@
+openapi: 3.1.0
+info:
+  title: TaskFlow API
+  version: 1.0.0
+  description: |
+    API REST de TaskFlow para proyectos, tareas, sesiones y notificaciones. Todo el tráfico entra por el
+    **API gateway**; los microservicios internos (auth, tasks, notifications, presence) no se exponen.
+
+    **Modelo de seguridad**
+    - El gateway valida el JWT (`Authorization: Bearer <token>`, emisor `taskflow-v2`) en cada petición,
+      salvo `POST /api/auth/register`, `POST /api/auth/login`, `/health`, `/health/services`, `/docs` y `/openapi.yaml`.
+    - El token dura **900 segundos** (TTL). Cada login crea una sesión en Redis; si la sesión expiró o el
+      token está en la **lista negra** de Redis (logout), el gateway responde 401.
+    - El gateway reenvía la identidad a los servicios con cabeceras internas firmadas; los servicios
+      aplican las reglas de rol (admin, leader, member).
+
+    **Caché**: la lista de tareas de un proyecto y cada tarea individual usan caché-aside en Redis con TTL de
+    60 segundos; la respuesta indica el origen en `source` (`cache` o `database`). Se invalida al crear,
+    asignar o cambiar el estado de una tarea.
+
+    **Errores**: siempre `{ "error": "<codigo>" }` con el código HTTP correspondiente.
+servers:
+  - url: /
+    description: Mismo origen que sirve esta documentación
+security:
+  - bearerAuth: []
+tags:
+  - name: Salud
+  - name: Auth
+  - name: Proyectos
+  - name: Tareas
+  - name: Notificaciones
+  - name: Presencia
+paths:
+  /health:
+    get:
+      tags: [Salud]
+      summary: Salud del gateway
+      security: []
+      responses:
+        "200":
+          description: Gateway vivo
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, service]
+                properties:
+                  status: { type: string, example: ok }
+                  service: { type: string, example: api-gateway }
+  /health/services:
+    get:
+      tags: [Salud]
+      summary: Salud profunda de Redis y de los servicios internos
+      description: Pública. Sondea el `/health` de cada servicio (timeout 4 s) y hace `PING` a Redis.
+      security: []
+      responses:
+        "200":
+          description: Estado de cada componente (siempre 200; el detalle va en `ok`)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [gateway, redis, services]
+                properties:
+                  gateway:
+                    type: object
+                    required: [ok]
+                    properties:
+                      ok: { type: boolean }
+                  redis: { $ref: "#/components/schemas/ProbeResult" }
+                  services:
+                    type: object
+                    required: [auth, tasks, notifications, presence]
+                    properties:
+                      auth: { $ref: "#/components/schemas/ProbeResult" }
+                      tasks: { $ref: "#/components/schemas/ProbeResult" }
+                      notifications: { $ref: "#/components/schemas/ProbeResult" }
+                      presence: { $ref: "#/components/schemas/ProbeResult" }
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      summary: Registrar una cuenta de miembro
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 10 }
+      responses:
+        "201":
+          description: Usuario creado con rol member
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user]
+                properties:
+                  user: { $ref: "#/components/schemas/User" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409": { description: Correo ya registrado (`email_already_registered`), content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Iniciar sesión (crea la sesión en Redis y devuelve el JWT)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        "200":
+          description: JWT y perfil
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accessToken, tokenType, expiresIn, user]
+                properties:
+                  accessToken: { type: string }
+                  tokenType: { type: string, example: Bearer }
+                  expiresIn: { type: integer, description: Segundos de vigencia, example: 900 }
+                  user: { $ref: "#/components/schemas/User" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { description: Credenciales inválidas (`invalid_credentials`), content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revocar el JWT actual y cerrar la sesión
+      responses:
+        "200":
+          description: Sesión cerrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  loggedOut: { type: boolean }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      summary: Usuario autenticado
+      responses:
+        "200":
+          description: Perfil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { description: Usuario no encontrado (`user_not_found`), content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /api/auth/users:
+    get:
+      tags: [Auth]
+      summary: Directorio de usuarios (para elegir miembros y responsables)
+      description: Solo id, nombre y rol; no incluye el correo. Máximo 200, ordenados por nombre.
+      responses:
+        "200":
+          description: Directorio
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items: { $ref: "#/components/schemas/DirectoryUser" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/auth/users/{id}/role:
+    patch:
+      tags: [Auth]
+      summary: Cambiar el rol de un usuario (solo admin)
+      parameters:
+        - { $ref: "#/components/parameters/UserRoleId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role: { $ref: "#/components/schemas/Role" }
+      responses:
+        "200":
+          description: Rol actualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: "#/components/schemas/User" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/projects:
+    get:
+      tags: [Proyectos]
+      summary: Proyectos visibles para el usuario (admin ve todos)
+      responses:
+        "200":
+          description: Lista de proyectos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  projects:
+                    type: array
+                    items: { $ref: "#/components/schemas/Project" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [Proyectos]
+      summary: Crear un proyecto (el creador queda como líder) con miembros iniciales opcionales
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                description: { type: string }
+                members:
+                  type: array
+                  items: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Proyecto creado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  project: { $ref: "#/components/schemas/Project" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/projects/{projectId}/members:
+    get:
+      tags: [Proyectos]
+      summary: Miembros del proyecto (el líder primero)
+      parameters:
+        - { $ref: "#/components/parameters/ProjectId" }
+      responses:
+        "200":
+          description: Miembros
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  members:
+                    type: array
+                    items: { $ref: "#/components/schemas/ProjectMember" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [Proyectos]
+      summary: Agregar un miembro (solo líder del proyecto o admin)
+      parameters:
+        - { $ref: "#/components/parameters/ProjectId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Miembro agregado (idempotente)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  projectId: { type: string, format: uuid }
+                  userId: { type: string, format: uuid }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/projects/{projectId}/tasks:
+    get:
+      tags: [Tareas]
+      summary: Tareas del proyecto con caché-aside en Redis
+      parameters:
+        - { $ref: "#/components/parameters/ProjectId" }
+      responses:
+        "200":
+          description: Tareas y origen de los datos
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tasks, source]
+                properties:
+                  tasks:
+                    type: array
+                    items: { $ref: "#/components/schemas/Task" }
+                  source: { $ref: "#/components/schemas/Source" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [Tareas]
+      summary: Crear una tarea en el proyecto
+      parameters:
+        - { $ref: "#/components/parameters/ProjectId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string }
+                description: { type: string }
+                assigneeId: { type: [string, "null"], format: uuid }
+      responses:
+        "201":
+          description: Tarea creada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task: { $ref: "#/components/schemas/Task" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/tasks/{taskId}:
+    get:
+      tags: [Tareas]
+      summary: Una tarea (entrada de caché en Redis)
+      parameters:
+        - { $ref: "#/components/parameters/TaskId" }
+      responses:
+        "200":
+          description: Tarea y origen
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [task, source]
+                properties:
+                  task: { $ref: "#/components/schemas/Task" }
+                  source: { $ref: "#/components/schemas/Source" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/tasks/{taskId}/assignee:
+    patch:
+      tags: [Tareas]
+      summary: Asignar o desasignar (líder/admin; un miembro puede autoasignarse)
+      parameters:
+        - { $ref: "#/components/parameters/TaskId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [assigneeId]
+              properties:
+                assigneeId: { type: [string, "null"], format: uuid }
+      responses:
+        "200":
+          description: Asignación actualizada y evento publicado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task: { $ref: "#/components/schemas/Task" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/tasks/{taskId}/status:
+    patch:
+      tags: [Tareas]
+      summary: Cambiar el estado (solo el miembro asignado)
+      parameters:
+        - { $ref: "#/components/parameters/TaskId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { $ref: "#/components/schemas/TaskStatus" }
+      responses:
+        "200":
+          description: Estado actualizado y evento publicado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task: { $ref: "#/components/schemas/Task" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/notifications:
+    get:
+      tags: [Notificaciones]
+      summary: Notificaciones del usuario autenticado
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+      responses:
+        "200":
+          description: Lista, la más reciente primero
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  notifications:
+                    type: array
+                    items: { $ref: "#/components/schemas/Notification" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/notifications/stream:
+    get:
+      tags: [Notificaciones]
+      summary: Suscripción en tiempo real por server-sent events
+      description: Eventos `connected` y `notification`; latido cada 25 s.
+      responses:
+        "200":
+          description: Flujo `text/event-stream`
+          content:
+            text/event-stream:
+              schema: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/notifications/{notificationId}/read:
+    patch:
+      tags: [Notificaciones]
+      summary: Marcar una notificación como leída
+      parameters:
+        - in: path
+          name: notificationId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Notificación leída
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  notification: { $ref: "#/components/schemas/Notification" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/notifications/push:
+    get:
+      tags: [Notificaciones]
+      summary: Configuración de notificaciones push al celular del usuario
+      responses:
+        "200":
+          description: Tema configurado (o null) y servidor de push
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [topic, server]
+                properties:
+                  topic: { type: [string, "null"] }
+                  server: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    put:
+      tags: [Notificaciones]
+      summary: Guardar el tema de push del usuario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [topic]
+              properties:
+                topic: { type: string, pattern: "^[A-Za-z0-9_-]{12,64}$" }
+      responses:
+        "200":
+          description: Tema guardado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  topic: { type: string }
+        "400":
+          description: Tema inválido (`invalid_topic`)
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      tags: [Notificaciones]
+      summary: Quitar el tema de push del usuario
+      responses:
+        "200":
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  removed: { type: boolean }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/notifications/push/test:
+    post:
+      tags: [Notificaciones]
+      summary: Enviar una notificación push de prueba
+      responses:
+        "200":
+          description: Enviada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sent: { type: boolean, const: true }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404":
+          description: El usuario no tiene tema (`push_not_configured`)
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "502":
+          description: Falló el servidor de push (`push_failed`)
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+  /api/presence/online/{userId}:
+    get:
+      tags: [Presencia]
+      summary: Si un usuario tiene sesión activa
+      parameters:
+        - { $ref: "#/components/parameters/UserId" }
+      responses:
+        "200":
+          description: Estado en línea
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userId: { type: string, format: uuid }
+                  online: { type: boolean }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT obtenido en `/api/auth/login`; vigencia de 900 s.
+  parameters:
+    UserRoleId:
+      in: path
+      name: id
+      required: true
+      schema: { type: string, format: uuid }
+    UserId:
+      in: path
+      name: userId
+      required: true
+      schema: { type: string, format: uuid }
+    ProjectId:
+      in: path
+      name: projectId
+      required: true
+      schema: { type: string, format: uuid }
+    TaskId:
+      in: path
+      name: taskId
+      required: true
+      schema: { type: string, format: uuid }
+  responses:
+    BadRequest:
+      description: Datos inválidos (código en `error`, p. ej. `invalid_role`, `task_title_required`)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthorized:
+      description: Falta el token o no es válido (`authentication_required`, `invalid_token`, `token_revoked`, `session_expired`)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: Sin permiso (`admin_required`, `project_access_denied`, `project_leader_or_admin_required`, `assigned_member_required`...)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: No existe (`user_not_found`, `project_not_found`, `task_not_found`, `notification_not_found`)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string, description: Código de error, example: task_not_found }
+    ProbeResult:
+      type: object
+      required: [ok, ms]
+      properties:
+        ok: { type: boolean }
+        ms: { type: integer, description: Latencia en milisegundos }
+    Role:
+      type: string
+      enum: [admin, leader, member]
+    TaskStatus:
+      type: string
+      enum: [pending, in_progress, completed]
+    Source:
+      type: string
+      enum: [cache, database]
+      description: Origen de los datos (caché-aside en Redis, TTL 60 s)
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email }
+        role: { $ref: "#/components/schemas/Role" }
+        created_at: { type: string, format: date-time }
+    DirectoryUser:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        role: { $ref: "#/components/schemas/Role" }
+    ProjectMember:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        role: { $ref: "#/components/schemas/Role" }
+        is_leader: { type: boolean }
+    Project:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string }
+        leader_id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+    Task:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        project_id: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string }
+        status: { $ref: "#/components/schemas/TaskStatus" }
+        assignee_id: { type: [string, "null"], format: uuid }
+        created_by: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    Notification:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        event_id: { type: string, format: uuid }
+        task_id: { type: string, format: uuid }
+        event_type: { type: string, example: task_assigned }
+        payload: { type: object, additionalProperties: true }
+        read_at: { type: [string, "null"], format: date-time }
+        created_at: { type: string, format: date-time }

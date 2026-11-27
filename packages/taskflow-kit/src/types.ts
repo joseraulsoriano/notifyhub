@@ -36,6 +36,8 @@ export type ServerNotification = {
   created_at: string;
 };
 
+export type PushConfig = { topic: string | null; server: string };
+
 export type ServiceHealth = { ok: boolean; ms: number };
 export type ArchitectureHealth = {
   gateway: { ok: boolean };
